@@ -1,0 +1,11 @@
+/vendor/
+composer.phar
+.env
+*.zip
+voucher_demo.pdf
+.phpunit.result.cache
+node_modules/
+.superpowers/
+/docs/superpowers/
+/docs/plans/
+CLAUDE.md

@@ -1,0 +1,28 @@
+.wc-boxnow-parcel-list {
+    margin: 0 0 10px;
+    padding: 0;
+    list-style: none;
+}
+
+.wc-boxnow-parcel-list li {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.wc-boxnow-parcel-list code {
+    flex: 1 1 100%;
+}
+
+.wc-boxnow-parcel-list .button {
+    min-height: 28px;
+    line-height: 26px;
+    padding: 0 8px;
+}
+
+.wc-boxnow-feedback:not(:empty) {
+    color: #b32d2e;
+    margin-top: 8px;
+}

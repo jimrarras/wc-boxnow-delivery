@@ -1,0 +1,39 @@
+# Greek translation of BOX NOW Delivery for WooCommerce.
+# Covers what customers see: the phone locker picker and the checkout error messages.
+msgid ""
+msgstr ""
+"Project-Id-Version: wc-boxnow-delivery 1.0.5\n"
+"Language: el\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: wc-boxnow-delivery\n"
+
+#: includes/class-boxnow-locker.php
+msgid "Choose a BOX NOW locker"
+msgstr "Επιλογή BOX NOW locker"
+
+#: includes/class-boxnow-locker.php
+msgid "Close"
+msgstr "Κλείσιμο"
+
+#: includes/class-boxnow-locker.php
+msgid "Confirm"
+msgstr "Επιβεβαίωση"
+
+#: includes/class-boxnow-locker.php
+msgid "Please choose a BOX NOW locker before placing your order."
+msgstr "Επιλέξτε ένα BOX NOW locker πριν ολοκληρώσετε την παραγγελία."
+
+#: includes/class-boxnow-locker.php
+msgid "Cash on delivery is not available for BOX NOW locker delivery. Please choose another payment method."
+msgstr "Η αντικαταβολή δεν είναι διαθέσιμη για παράδοση σε BOX NOW locker. Επιλέξτε άλλον τρόπο πληρωμής."
+
+#: includes/class-boxnow-locker.php
+msgid "Please select a locker first!"
+msgstr "Επιλέξτε πρώτα ένα locker."
+
+#: includes/class-boxnow-locker.php
+msgid "No locker supplied."
+msgstr "Δεν επιλέχθηκε locker."
