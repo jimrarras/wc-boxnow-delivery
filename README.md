@@ -1,5 +1,7 @@
 # BOX NOW Delivery for WooCommerce
 
+<img src=".github/readme/banner.webp" alt="BOX NOW Delivery for WooCommerce: locker selection, vouchers and tracking" width="100%">
+
 Open source WooCommerce integration for [BOX NOW](https://boxnow.gr) parcel lockers.
 
 ![The BOX NOW locker picker opened from the checkout: nearby lockers listed beside BOX NOW's map](.github/readme/boxnow-locker-picker.webp)
