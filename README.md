@@ -2,6 +2,8 @@
 
 Open source WooCommerce integration for [BOX NOW](https://boxnow.gr) parcel lockers.
 
+![The BOX NOW locker picker opened from the checkout: nearby lockers listed beside BOX NOW's map](.github/readme/boxnow-locker-picker.webp)
+
 ## Why this exists
 
 The official BOX NOW plugin works, and it is HPOS compatible. This one exists for
@@ -144,7 +146,9 @@ Built on the BOX NOW Partner API and BOX NOW's hosted locker widget. BOX NOW is 
 
 ## Support
 
-If this plugin saves you time, you can [buy me a coffee](https://buymeacoffee.com/jimrarras).
+If this plugin saves you time, you can buy me a coffee.
+
+<a href="https://buymeacoffee.com/jimrarras"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="48"></a>
 
 ## License
 
