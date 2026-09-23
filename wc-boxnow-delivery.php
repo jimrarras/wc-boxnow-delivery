@@ -3,7 +3,7 @@
  * Plugin Name: BOX NOW Delivery for WooCommerce
  * Plugin URI: https://github.com/jimrarras/wc-boxnow-delivery
  * Description: Open source BOX NOW parcel locker integration for WooCommerce — locker selection at checkout, voucher creation and printing, shipment tracking, and shipping cost calculation.
- * Version: 1.0.6
+ * Version: 1.0.7
  * Author: Dimitrios Rarras
  * Author URI: https://jimrarras.com
  * License: GPL-2.0-or-later
@@ -21,7 +21,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // ── Plugin constants, guarded against double definition ───────────
-defined( 'WC_BOXNOW_VERSION' )     || define( 'WC_BOXNOW_VERSION', '1.0.6' );
+defined( 'WC_BOXNOW_VERSION' )     || define( 'WC_BOXNOW_VERSION', '1.0.7' );
 defined( 'WC_BOXNOW_PLUGIN_FILE' ) || define( 'WC_BOXNOW_PLUGIN_FILE', __FILE__ );
 defined( 'WC_BOXNOW_PLUGIN_DIR' )  || define( 'WC_BOXNOW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 defined( 'WC_BOXNOW_PLUGIN_URL' )  || define( 'WC_BOXNOW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

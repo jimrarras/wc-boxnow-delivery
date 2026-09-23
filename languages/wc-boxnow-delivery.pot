@@ -1,20 +1,24 @@
-# Greek translation of BOX NOW Delivery for WooCommerce.
-# Covers the whole plugin: checkout and locker picker, customer emails, settings, the order box, order notes and
-# admin notices. Rebuild the template with php bin/make-pot.php and the .mo with php bin/make-mo.php.
+# Translation template for BOX NOW Delivery for WooCommerce.
+# Copyright (C) 2026 Dimitrios Rarras
+# This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: wc-boxnow-delivery 1.0.7\n"
-"Language: el\n"
+"Project-Id-Version: BOX NOW Delivery for WooCommerce 1.0.7\n"
+"Report-Msgid-Bugs-To: https://github.com/jimrarras/wc-boxnow-delivery/issues\n"
+"POT-Creation-Date: 2026-09-23T12:22:14+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"X-Generator: bin/make-pot.php\n"
+"Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Domain: wc-boxnow-delivery\n"
-
 
 #: includes/class-boxnow-admin.php:184
 msgid "Disabled — create vouchers manually"
-msgstr "Απενεργοποιημένο: δημιουργία voucher χειροκίνητα"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:268
 #: includes/class-boxnow-admin.php:269
@@ -23,620 +27,626 @@ msgstr "Απενεργοποιημένο: δημιουργία voucher χειρ�
 #: includes/class-boxnow-shipping-method.php:60
 #: includes/class-boxnow-voucher.php:827
 msgid "BOX NOW Delivery"
-msgstr "BOX NOW Delivery"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:295
 msgid "BOX NOW settings saved."
-msgstr "Οι ρυθμίσεις BOX NOW αποθηκεύτηκαν."
+msgstr ""
 
 #: includes/class-boxnow-admin.php:307
 #: includes/class-boxnow-voucher.php:724
 msgid "Permission denied."
-msgstr "Δεν επιτρέπεται η πρόσβαση."
+msgstr ""
 
 #: includes/class-boxnow-admin.php:318
 msgid "Connection successful."
-msgstr "Η σύνδεση πέτυχε."
+msgstr ""
 
 #: includes/class-boxnow-admin.php:341
 msgid "Select an environment"
-msgstr "Επιλέξτε περιβάλλον"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:361
 msgid "Comma-separated warehouse ids. Save valid credentials to pick them from a list instead."
-msgstr "Κωδικοί αποθήκης χωρισμένοι με κόμμα. Αποθηκεύστε έγκυρα στοιχεία σύνδεσης για να τους επιλέγετε από λίστα."
+msgstr ""
 
 #: includes/class-boxnow-admin.php:385
 #: includes/class-boxnow-admin.php:394
 msgid "Enable"
-msgstr "Ενεργοποίηση"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:413
 msgid "Hourly"
-msgstr "Κάθε ώρα"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:414
 msgid "Twice daily"
-msgstr "Δύο φορές την ημέρα"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:415
 msgid "Daily"
-msgstr "Μία φορά την ημέρα"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:473
 msgid "API Environment"
-msgstr "Περιβάλλον API"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:474
 msgid "Client ID"
-msgstr "Client ID"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:475
 msgid "Client Secret"
-msgstr "Client Secret"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:476
 msgid "Partner ID"
-msgstr "Partner ID"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:477
 msgid "Warehouse"
-msgstr "Αποθήκη"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:478
 msgid "Orders Contact Email"
-msgstr "Email επικοινωνίας για παραγγελίες"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:479
 msgid "Orders Contact Phone"
-msgstr "Τηλέφωνο επικοινωνίας για παραγγελίες"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:480
 msgid "Voucher Delivery"
-msgstr "Αποστολή voucher"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:481
 msgid "Allow Returns"
-msgstr "Επιτρέπονται επιστροφές"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:482
 msgid "Widget Display Mode"
-msgstr "Τρόπος εμφάνισης widget"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:483
 msgid "Widget GPS Permission"
-msgstr "Άδεια GPS στο widget"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:484
 msgid "Button Colour"
-msgstr "Χρώμα κουμπιού"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:485
 msgid "Button Text"
-msgstr "Κείμενο κουμπιού"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:486
 msgid "Locker Not Selected Message"
-msgstr "Μήνυμα όταν δεν έχει επιλεγεί locker"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:487
 msgid "Auto-create Vouchers On Status"
-msgstr "Αυτόματη δημιουργία voucher στην κατάσταση"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:488
 msgid "Automatic Tracking"
-msgstr "Αυτόματη Παρακολούθηση"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:489
 msgid "Tracking Frequency"
-msgstr "Συχνότητα Παρακολούθησης"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:490
 msgid "Tracking In Customer Emails"
-msgstr "Παρακολούθηση στα email πελατών"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:491
 msgid "Inbound Webhook"
-msgstr "Εισερχόμενο webhook"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:492
 msgid "Webhook Shared Secret"
-msgstr "Κοινό μυστικό webhook"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:493
 msgid "Debug Logging"
-msgstr "Καταγραφή Αποσφαλμάτωσης"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:494
 msgid "Disable Cash On Delivery For BOX NOW"
-msgstr "Απενεργοποίηση αντικαταβολής για BOX NOW"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:509
 msgid "The inbound webhook is enabled. BOX NOW accepts only one webhook URL per partner account, so registering this URL will stop events reaching any other store on the same account. Register it with BOX NOW support:"
-msgstr "Το εισερχόμενο webhook είναι ενεργό. Η BOX NOW δέχεται μόνο ένα URL webhook ανά λογαριασμό συνεργάτη, οπότε η καταχώριση αυτού του URL σταματά τα συμβάντα προς κάθε άλλο κατάστημα του ίδιου λογαριασμού. Καταχωρίστε το μέσω της υποστήριξης της BOX NOW:"
+msgstr ""
 
 #: includes/class-boxnow-admin.php:535
 msgid "Test Connection"
-msgstr "Δοκιμή Σύνδεσης"
+msgstr ""
 
 #: includes/class-boxnow-api.php:89
 msgid "BOX NOW API credentials are not configured."
-msgstr "Τα στοιχεία σύνδεσης του API της BOX NOW δεν έχουν οριστεί."
+msgstr ""
 
 #: includes/class-boxnow-api.php:117
 msgid "Authentication failed."
-msgstr "Η ταυτοποίηση απέτυχε."
+msgstr ""
 
 #: includes/class-boxnow-api.php:199
 #: includes/class-boxnow-api.php:215
 #: includes/class-boxnow-api.php:383
 #: includes/class-boxnow-api.php:399
 msgid "BOX NOW rejected the credentials."
-msgstr "Η BOX NOW απέρριψε τα στοιχεία σύνδεσης."
+msgstr ""
 
 #: includes/class-boxnow-api.php:392
 msgid "Could not fetch the label for parcel %s."
-msgstr "Δεν ήταν δυνατή η λήψη της ετικέτας για το δέμα %s."
+msgstr ""
 
 #: includes/class-boxnow-email-tracking.php:37
 #: includes/class-boxnow-tracking.php:885
 #: includes/class-boxnow-tracking.php:892
 msgid "BOX NOW tracking"
-msgstr "Παρακολούθηση BOX NOW"
+msgstr ""
 
 #: includes/class-boxnow-email-tracking.php:38
 msgid "Sent to the customer when BOX NOW vouchers are created for their order, with a tracking link for every parcel."
-msgstr "Στέλνεται στον πελάτη όταν δημιουργούνται voucher BOX NOW για την παραγγελία του, με σύνδεσμο παρακολούθησης για κάθε δέμα."
+msgstr ""
 
 #: includes/class-boxnow-email-tracking.php:71
 msgid "Track your {site_title} order {order_number} with BOX NOW"
-msgstr "Παρακολουθήστε την παραγγελία σας {order_number} από το {site_title} με την BOX NOW"
+msgstr ""
 
 #: includes/class-boxnow-email-tracking.php:78
 msgid "Your parcel is on its way"
-msgstr "Το δέμα σας είναι καθ' οδόν"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:324
 #: includes/class-boxnow-locker.php:568
 #: includes/class-boxnow-locker.php:903
 msgid "Please choose a BOX NOW locker before placing your order."
-msgstr "Επιλέξτε ένα BOX NOW locker πριν ολοκληρώσετε την παραγγελία."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:352
 msgid "Cash on delivery is not available for BOX NOW locker delivery. Please choose another payment method."
-msgstr "Η αντικαταβολή δεν είναι διαθέσιμη για παράδοση σε BOX NOW locker. Επιλέξτε άλλον τρόπο πληρωμής."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:473
 msgid "Your shipping method was updated. Please review your order and place it again."
-msgstr "Η μέθοδος αποστολής ενημερώθηκε. Ελέγξτε την παραγγελία σας και ολοκληρώστε την ξανά."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:600
 msgid "No locker supplied."
-msgstr "Δεν επιλέχθηκε locker."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:674
 #: includes/class-boxnow-locker.php:744
 msgid "Pick a Locker"
-msgstr "Επιλογή locker"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:675
 msgid "Please select a locker first!"
-msgstr "Επιλέξτε πρώτα ένα locker."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:677
 msgid "Choose a BOX NOW locker"
-msgstr "Επιλογή BOX NOW locker"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:678
 msgid "Close"
-msgstr "Κλείσιμο"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:679
 msgid "Confirm"
-msgstr "Επιβεβαίωση"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:782
 msgid "BOX NOW locker map"
-msgstr "Χάρτης BOX NOW locker"
+msgstr ""
 
 #: includes/class-boxnow-locker.php:799
 msgid "Selected BOX NOW locker id."
-msgstr "Κωδικός του επιλεγμένου BOX NOW locker."
+msgstr ""
 
 #: includes/class-boxnow-locker.php:804
 msgid "Selected BOX NOW locker name."
-msgstr "Όνομα του επιλεγμένου BOX NOW locker."
+msgstr ""
 
 #: includes/class-boxnow-payload.php:126
 msgid "An item in this order does not fit any BOX NOW compartment."
-msgstr "Ένα προϊόν της παραγγελίας δεν χωρά σε καμία θυρίδα BOX NOW."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:25
 msgid "Deliver to BOX NOW parcel lockers."
-msgstr "Παράδοση σε BOX NOW locker."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:51
 msgid "Enable/Disable"
-msgstr "Ενεργοποίηση/Απενεργοποίηση"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:53
 msgid "Enable BOX NOW Delivery"
-msgstr "Ενεργοποίηση BOX NOW Delivery"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:57
 msgid "Method Title"
-msgstr "Τίτλος Μεθόδου"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:59
 msgid "Shown to the customer at checkout."
-msgstr "Εμφανίζεται στον πελάτη στο ταμείο."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:64
 msgid "Cost"
-msgstr "Κόστος"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:66
 msgid "Shipping charge for this method."
-msgstr "Χρέωση αποστολής για αυτή τη μέθοδο."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:71
 msgid "Free Delivery Threshold"
-msgstr "Όριο δωρεάν παράδοσης"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:73
 msgid "Order subtotal at or above which delivery is free. Leave empty to disable."
-msgstr "Μερικό σύνολο παραγγελίας από το οποίο και πάνω η παράδοση είναι δωρεάν. Αφήστε το κενό για απενεργοποίηση."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:78
 msgid "Taxable"
-msgstr "Φορολογήσιμο"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:80
 msgid "Apply tax to the shipping cost"
-msgstr "Εφαρμογή φόρου στο κόστος αποστολής"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:84
 msgid "Max Weight"
-msgstr "Μέγιστο βάρος"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:86
 msgid "Carts containing a heavier item will not be offered BOX NOW."
-msgstr "Σε καλάθια με βαρύτερο προϊόν η BOX NOW δεν προσφέρεται."
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:91
 msgid "Max Weight Unit"
-msgstr "Μονάδα μέγιστου βάρους"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:95
 msgid "kg"
-msgstr "kg"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:96
 msgid "g"
-msgstr "g"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:97
 msgid "lbs"
-msgstr "lbs"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:98
 msgid "oz"
-msgstr "oz"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:102
 msgid "Custom COD Description"
-msgstr "Δική σας περιγραφή αντικαταβολής"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:104
 msgid "Override the Cash on Delivery description for this method"
-msgstr "Αντικατάσταση της περιγραφής της αντικαταβολής για αυτή τη μέθοδο"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:108
 msgid "COD Description"
-msgstr "Περιγραφή αντικαταβολής"
+msgstr ""
 
 #: includes/class-boxnow-shipping-method.php:110
 msgid "Shown in place of the default Cash on Delivery description when BOX NOW is selected."
-msgstr "Εμφανίζεται αντί για την προεπιλεγμένη περιγραφή της αντικαταβολής όταν έχει επιλεγεί BOX NOW."
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:256
 msgid "BOX NOW parcels on this order settled as %s. The order no longer ships with BOX NOW Delivery, so its status was left unchanged."
-msgstr "Τα δέματα BOX NOW αυτής της παραγγελίας ολοκληρώθηκαν ως %s. Η παραγγελία δεν αποστέλλεται πλέον με BOX NOW Delivery, γι' αυτό η κατάστασή της δεν άλλαξε."
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:267
 msgid "BOX NOW could not complete this delivery on its own. The order needs manual attention."
-msgstr "Η BOX NOW δεν μπόρεσε να ολοκληρώσει μόνη της αυτή την παράδοση. Η παραγγελία χρειάζεται χειροκίνητο έλεγχο."
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:402
 msgid "BOX NOW reports parcel status: %s"
-msgstr "Η BOX NOW αναφέρει κατάσταση δέματος: %s"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:407
 msgid "BOX NOW reports parcel %1$s status: %2$s"
-msgstr "Η BOX NOW αναφέρει για το δέμα %1$s κατάσταση: %2$s"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:435
 msgid "BOX NOW: all %1$d parcels settled as %2$s (%3$s)."
-msgstr "BOX NOW: και τα %1$d δέματα ολοκληρώθηκαν ως %2$s (%3$s)."
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:437
 msgid "returned"
-msgstr "επιστράφηκε"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:437
 msgid "delivered"
-msgstr "παραδόθηκε"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:533
 msgid "BOX NOW reports parcel %1$s status: %2$s. The order status was left unchanged because the order is not an open BOX NOW shipment."
-msgstr "Η BOX NOW αναφέρει για το δέμα %1$s κατάσταση: %2$s. Η κατάσταση της παραγγελίας δεν άλλαξε, επειδή η παραγγελία δεν είναι ανοιχτή αποστολή BOX NOW."
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:926
 msgid "Track parcel %s"
-msgstr "Παρακολούθηση δέματος %s"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:939
 msgid "Parcel number"
-msgstr "Αριθμός δέματος"
+msgstr ""
 
 #: includes/class-boxnow-tracking.php:940
 #: includes/class-boxnow-voucher.php:972
 msgid "Track"
-msgstr "Παρακολούθηση"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:322
 msgid "This order already has a voucher from %1$s (%2$s). Creating BOX NOW vouchers too means two shipments."
-msgstr "Αυτή η παραγγελία έχει ήδη voucher από %1$s (%2$s). Αν δημιουργήσετε και voucher BOX NOW, θα γίνουν δύο αποστολές."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:346
 msgid "This order already has BOX NOW parcels (%s). An ACS voucher too means two shipments; cancel the BOX NOW parcels first if you are switching carriers."
-msgstr "Αυτή η παραγγελία έχει ήδη δέματα BOX NOW (%s). Ένα voucher ACS επιπλέον σημαίνει δύο αποστολές· αν αλλάζετε μεταφορική, ακυρώστε πρώτα τα δέματα BOX NOW."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:361
 msgid "This order ships with BOX NOW Delivery to a locker. An ACS voucher goes to the customer's address instead, and ACS emails the customer its own tracking number."
-msgstr "Αυτή η παραγγελία αποστέλλεται με BOX NOW Delivery σε locker. Ένα voucher ACS πηγαίνει αντί γι' αυτό στη διεύθυνση του πελάτη, και η ACS στέλνει στον πελάτη email με δικό της αριθμό παρακολούθησης."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:366
 msgid "This order ships with BOX NOW Delivery to locker %s. An ACS voucher goes to the customer's address instead, and ACS emails the customer its own tracking number."
-msgstr "Αυτή η παραγγελία αποστέλλεται με BOX NOW Delivery στο locker %s. Ένα voucher ACS πηγαίνει αντί γι' αυτό στη διεύθυνση του πελάτη, και η ACS στέλνει στον πελάτη email με δικό της αριθμό παρακολούθησης."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:404
 msgid "ACS auto-voucher skipped: this order still has BOX NOW parcels (%s)."
-msgstr "Η αυτόματη δημιουργία voucher ACS παραλείφθηκε: η παραγγελία έχει ακόμη δέματα BOX NOW (%s)."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:472
 msgid "BOX NOW: this order did not use BOX NOW Delivery."
-msgstr "BOX NOW: αυτή η παραγγελία δεν χρησιμοποίησε BOX NOW Delivery."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:479
 msgid "BOX NOW: this order has no locker selected."
-msgstr "BOX NOW: αυτή η παραγγελία δεν έχει επιλεγμένο locker."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:497
 msgid "BOX NOW: voucher not created. %s"
-msgstr "BOX NOW: το voucher δεν δημιουργήθηκε. %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:508
 msgid "BOX NOW: voucher creation failed. %s"
-msgstr "BOX NOW: η δημιουργία voucher απέτυχε. %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:515
 msgid "BOX NOW returned no parcels for this delivery request."
-msgstr "Η BOX NOW δεν επέστρεψε δέματα για αυτό το αίτημα παράδοσης."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:535
 msgid "BOX NOW vouchers created: %s"
-msgstr "Δημιουργήθηκαν voucher BOX NOW: %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:573
 msgid "BOX NOW: could not cancel parcel %1$s. %2$s"
-msgstr "BOX NOW: δεν ήταν δυνατή η ακύρωση του δέματος %1$s. %2$s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:597
 msgid "BOX NOW parcel %s cancelled."
-msgstr "Το δέμα BOX NOW %s ακυρώθηκε."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:634
 msgid "BOX NOW parcels cancelled: %s"
-msgstr "Ακυρώθηκαν δέματα BOX NOW: %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:640
 msgid "BOX NOW parcels that could not be cancelled: %s"
-msgstr "Δέματα BOX NOW που δεν ήταν δυνατό να ακυρωθούν: %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:694
 msgid "BOX NOW locker changed from %1$s to %2$s on the order screen."
-msgstr "Το BOX NOW locker άλλαξε από %1$s σε %2$s στην οθόνη της παραγγελίας."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:695
 msgid "none"
-msgstr "κανένα"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:706
 msgid "Removed the earlier ACS Point from this order: %s"
-msgstr "Αφαιρέθηκε το προηγούμενο ACS Point από αυτή την παραγγελία: %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:731
 msgid "Order not found."
-msgstr "Η παραγγελία δεν βρέθηκε."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:758
 msgid "No parcel supplied."
-msgstr "Δεν δόθηκε δέμα."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:763
 #: includes/class-boxnow-voucher.php:794
 msgid "That parcel does not belong to this order."
-msgstr "Αυτό το δέμα δεν ανήκει σε αυτή την παραγγελία."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:868
 msgid "Cancel this BOX NOW voucher?"
-msgstr "Ακύρωση αυτού του voucher BOX NOW;"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:869
 msgid "Cancel ALL BOX NOW vouchers on this order? This cannot be undone."
-msgstr "Ακύρωση ΟΛΩΝ των voucher BOX NOW αυτής της παραγγελίας; Η ενέργεια δεν αναιρείται."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:882
 #: includes/class-boxnow-voucher.php:894
 msgid "This order did not use BOX NOW Delivery."
-msgstr "Αυτή η παραγγελία δεν χρησιμοποίησε BOX NOW Delivery."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:909
 msgid "This order no longer ships with BOX NOW Delivery, but the BOX NOW vouchers below are still booked. Cancel them unless the parcel will still go with BOX NOW."
-msgstr "Αυτή η παραγγελία δεν αποστέλλεται πλέον με BOX NOW Delivery, αλλά τα παρακάτω voucher BOX NOW είναι ακόμη ενεργά. Ακυρώστε τα, εκτός αν το δέμα θα σταλεί τελικά με BOX NOW."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:919
 msgid "This order also ships with %s. A BOX NOW voucher declares the whole order and, for cash on delivery, collects the whole order total, so make sure the cash is collected only once."
-msgstr "Αυτή η παραγγελία αποστέλλεται και με %s. Ένα voucher BOX NOW δηλώνει ολόκληρη την παραγγελία και, με αντικαταβολή, εισπράττει όλο το σύνολό της, οπότε φροντίστε η αντικαταβολή να εισπραχθεί μόνο μία φορά."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:935
 msgid "Locker ID:"
-msgstr "Κωδικός locker:"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:937
 msgid "Change it here and click Update before creating the voucher."
-msgstr "Αλλάξτε τον εδώ και πατήστε Ενημέρωση πριν δημιουργήσετε το voucher."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:942
 msgid "Locker:"
-msgstr "Locker:"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:943
 msgid "not selected"
-msgstr "δεν έχει επιλεγεί"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:956
 msgid "Parcels:"
-msgstr "Δέματα:"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:958
 msgid "Create Voucher"
-msgstr "Δημιουργία Voucher"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:970
 msgid "Print"
-msgstr "Εκτύπωση"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:973
 msgid "Cancel"
-msgstr "Ακύρωση"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:981
 msgid "Cancel All Vouchers"
-msgstr "Ακύρωση όλων των voucher"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1071
 msgid "BOX NOW: automatic voucher skipped, this order already has a voucher from %s."
-msgstr "BOX NOW: η αυτόματη δημιουργία voucher παραλείφθηκε, η παραγγελία έχει ήδη voucher από %s."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1083
 msgid "BOX NOW: automatic voucher skipped. This order also ships with %s; create the voucher by hand and collect the cash on delivery only once."
-msgstr "BOX NOW: η αυτόματη δημιουργία voucher παραλείφθηκε. Αυτή η παραγγελία αποστέλλεται και με %s· δημιουργήστε το voucher χειροκίνητα και εισπράξτε την αντικαταβολή μόνο μία φορά."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1099
 msgid "BOX NOW: automatic voucher creation failed unexpectedly. %s"
-msgstr "BOX NOW: η αυτόματη δημιουργία voucher απέτυχε απρόσμενα. %s"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1112
 msgid "Create BOX NOW vouchers"
-msgstr "BOX NOW: Δημιουργία voucher"
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1180
 msgid "BOX NOW: bulk voucher skipped, this order already has a voucher from %s. Use the order screen to override."
-msgstr "BOX NOW: η μαζική δημιουργία voucher παραλείφθηκε, η παραγγελία έχει ήδη voucher από %s. Για να την παρακάμψετε, χρησιμοποιήστε την οθόνη της παραγγελίας."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1192
 msgid "BOX NOW: bulk voucher skipped. This order also ships with %s; create the voucher by hand and collect the cash on delivery only once."
-msgstr "BOX NOW: η μαζική δημιουργία voucher παραλείφθηκε. Αυτή η παραγγελία αποστέλλεται και με %s· δημιουργήστε το voucher χειροκίνητα και εισπράξτε την αντικαταβολή μόνο μία φορά."
+msgstr ""
 
 #: includes/class-boxnow-voucher.php:1274
+#, php-format
 msgid "%d BOX NOW voucher created."
 msgid_plural "%d BOX NOW vouchers created."
-msgstr[0] "Δημιουργήθηκε %d voucher BOX NOW."
-msgstr[1] "Δημιουργήθηκαν %d voucher BOX NOW."
+msgstr[0] ""
+msgstr[1] ""
 
 #: includes/class-boxnow-voucher.php:1280
+#, php-format
 msgid "%d order skipped because it is not a BOX NOW order, already has a voucher, also ships with another carrier, or voucher creation failed."
 msgid_plural "%d orders skipped because they are not BOX NOW orders, already have a voucher, also ship with another carrier, or voucher creation failed."
-msgstr[0] "%d παραγγελία παραλείφθηκε επειδή δεν είναι παραγγελία BOX NOW, έχει ήδη voucher, αποστέλλεται και με άλλη μεταφορική, ή η δημιουργία voucher απέτυχε."
-msgstr[1] "%d παραγγελίες παραλείφθηκαν επειδή δεν είναι παραγγελίες BOX NOW, έχουν ήδη voucher, αποστέλλονται και με άλλη μεταφορική, ή η δημιουργία voucher απέτυχε."
+msgstr[0] ""
+msgstr[1] ""
 
 #: includes/class-boxnow-voucher.php:1286
+#, php-format
 msgid "%d of them has an order note that says why."
 msgid_plural "%d of them have an order note that says why."
-msgstr[0] "%d από αυτές έχει σημείωση παραγγελίας που εξηγεί τον λόγο."
-msgstr[1] "%d από αυτές έχουν σημείωση παραγγελίας που εξηγεί τον λόγο."
+msgstr[0] ""
+msgstr[1] ""
 
 #: includes/class-boxnow-voucher.php:1602
+#, php-format
 msgid "%1$d order was left out of \"ACS: Create Vouchers\" because it ships with BOX NOW or has BOX NOW vouchers: %2$s. To ship it with ACS anyway, use Create Voucher in the ACS box on the order."
 msgid_plural "%1$d orders were left out of \"ACS: Create Vouchers\" because they ship with BOX NOW or have BOX NOW vouchers: %2$s. To ship one with ACS anyway, use Create Voucher in the ACS box on the order."
-msgstr[0] "%1$d παραγγελία εξαιρέθηκε από το \"ACS: Δημιουργία Voucher\" επειδή αποστέλλεται με BOX NOW ή έχει voucher BOX NOW: %2$s. Για να την αποστείλετε παρ' όλα αυτά με ACS, χρησιμοποιήστε τη Δημιουργία Voucher στο πλαίσιο ACS της παραγγελίας."
-msgstr[1] "%1$d παραγγελίες εξαιρέθηκαν από το \"ACS: Δημιουργία Voucher\" επειδή αποστέλλονται με BOX NOW ή έχουν voucher BOX NOW: %2$s. Για να αποστείλετε μία από αυτές παρ' όλα αυτά με ACS, χρησιμοποιήστε τη Δημιουργία Voucher στο πλαίσιο ACS της παραγγελίας."
+msgstr[0] ""
+msgstr[1] ""
 
 #: templates/emails/boxnow-tracking.php:29
 #: templates/emails/plain/boxnow-tracking.php:26
 msgid "Hi %s,"
-msgstr "Γεια σας %s,"
+msgstr ""
 
 #: templates/emails/boxnow-tracking.php:31
 #: templates/emails/plain/boxnow-tracking.php:28
 msgid "Hi,"
-msgstr "Γεια σας,"
+msgstr ""
 
 #: templates/emails/boxnow-tracking.php:40
 #: templates/emails/plain/boxnow-tracking.php:34
+#, php-format
 msgid "Your order %s has been handed to BOX NOW. You can follow your parcel here:"
 msgid_plural "Your order %s has been handed to BOX NOW. You can follow your parcels here:"
-msgstr[0] "Η παραγγελία σας %s παραδόθηκε στην BOX NOW. Μπορείτε να παρακολουθήσετε το δέμα σας εδώ:"
-msgstr[1] "Η παραγγελία σας %s παραδόθηκε στην BOX NOW. Μπορείτε να παρακολουθήσετε τα δέματά σας εδώ:"
+msgstr[0] ""
+msgstr[1] ""
 
 #: wc-boxnow-delivery.php:93
 msgctxt "Order status"
 msgid "Delivered (BOX NOW)"
-msgstr "Παραδόθηκε (BOX NOW)"
+msgstr ""
 
 #: wc-boxnow-delivery.php:94
 msgctxt "Order status"
 msgid "Returned (BOX NOW)"
-msgstr "Επιστράφηκε (BOX NOW)"
+msgstr ""
 
 #: wc-boxnow-delivery.php:95
 msgctxt "Order status"
 msgid "Needs Attention (BOX NOW)"
-msgstr "Χρειάζεται έλεγχο (BOX NOW)"
+msgstr ""
 
 #: wc-boxnow-delivery.php:173
 #: wc-boxnow-delivery.php:197
 #: wc-boxnow-delivery.php:208
 msgid "BOX NOW Delivery for WooCommerce"
-msgstr "BOX NOW Delivery για WooCommerce"
+msgstr ""
 
 #: wc-boxnow-delivery.php:174
 msgid "Missing required file:"
-msgstr "Λείπει απαιτούμενο αρχείο:"
+msgstr ""
 
 #: wc-boxnow-delivery.php:198
 msgid "requires WooCommerce to be installed and active."
-msgstr "απαιτεί το WooCommerce εγκατεστημένο και ενεργό."
+msgstr ""
 
 #: wc-boxnow-delivery.php:209
 msgid "cannot run alongside the official \"BOX NOW Delivery\" plugin — both write the same order data. Deactivate the official plugin to continue."
-msgstr "δεν μπορεί να λειτουργεί μαζί με το επίσημο πρόσθετο \"BOX NOW Delivery\": και τα δύο γράφουν τα ίδια δεδομένα παραγγελίας. Απενεργοποιήστε το επίσημο πρόσθετο για να συνεχίσετε."
+msgstr ""
 
 #: wc-boxnow-delivery.php:249
 msgid "BOX NOW Delivery for WooCommerce requires PHP 7.4 or higher."
-msgstr "Το BOX NOW Delivery για WooCommerce απαιτεί PHP 7.4 ή νεότερη."
+msgstr ""
 
 #: wc-boxnow-delivery.php:250
 #: wc-boxnow-delivery.php:259
 msgid "Plugin Activation Error"
-msgstr "Σφάλμα ενεργοποίησης πρόσθετου"
+msgstr ""
 
 #: wc-boxnow-delivery.php:258
 msgid "BOX NOW Delivery for WooCommerce requires WooCommerce to be installed and active."
-msgstr "Το BOX NOW Delivery για WooCommerce απαιτεί το WooCommerce εγκατεστημένο και ενεργό."
+msgstr ""
 
 #: wc-boxnow-delivery.php:284
 msgid "Settings"
-msgstr "Ρυθμίσεις"
+msgstr ""
+

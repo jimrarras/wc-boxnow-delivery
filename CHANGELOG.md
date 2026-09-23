@@ -3,6 +3,31 @@
 All notable changes to BOX NOW Delivery for WooCommerce are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.7] - 2026-09-23
+
+### Changed
+
+- Complete Greek translation. On a Greek site the settings page, the shipping
+  method settings, the BOX NOW order box and its confirmations, order notes,
+  admin notices, the three order statuses, the "Create BOX NOW vouchers" bulk
+  action and the tracking email are now in Greek. Before, only the locker
+  picker and the checkout messages were, so BOX NOW's notes and notices read
+  in English next to ACS Courier's and Geniki Taxydromiki's Greek ones. The
+  terms follow those two plugins' Greek translations (voucher, δέμα,
+  "Παραδόθηκε (BOX NOW)", "Επιστράφηκε (BOX NOW)")
+
+### Added
+
+- `bin/make-pot.php` writes `languages/wc-boxnow-delivery.pot` from the
+  source, and `bin/make-mo.php` compiles a `.po` into a `.mo` whose header
+  WordPress's loader before 6.5 also accepts. Neither is in the release zip.
+  A call whose text is built at run time (such as the order status count
+  label) is left out of the template
+- Unit test `TranslationsTest`: every template string has a Greek
+  translation, the catalogue holds nothing the template lacks, every `%s`/`%d`
+  placeholder survives, and the `.mo` matches the `.po`
+- `.gitattributes` keeps working copies LF on Windows too
+
 ## [1.0.6] - 2026-09-23
 
 For stores that also run ACS Courier (wc-acs-courier) and Geniki Taxydromiki

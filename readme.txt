@@ -7,7 +7,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -113,6 +113,10 @@ for, stays live. Use BOX NOW 1.0.6 with Geniki Taxydromiki 1.0.1 or later.
   whenever the payment method changes.
 
 == Changelog ==
+
+= 1.0.7 =
+* Tweak: complete Greek translation. Settings, the BOX NOW order box, order notes, admin notices, order statuses, the bulk action and the tracking email are now in Greek on a Greek site; before, only the locker picker and the checkout messages were
+* Dev: bin/make-pot.php and bin/make-mo.php rebuild the template and the compiled catalogue (not in the release zip); a unit test keeps every template string translated, every placeholder intact and the .mo in step with the .po
 
 = 1.0.6 =
 * Fix: ACS Courier's bulk "ACS: Create Vouchers" no longer books ACS vouchers on BOX NOW orders or orders with live BOX NOW parcels, on the HPOS and the legacy orders screen; a notice lists the orders left out, and when every selected order is left out ACS's result notice from an earlier run does not show again

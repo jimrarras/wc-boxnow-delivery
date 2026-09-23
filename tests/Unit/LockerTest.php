@@ -721,14 +721,17 @@ class LockerTest extends TestCase {
             $compiled[ substr( $mo, $original['offset'], $original['length'] ) ] = substr( $mo, $translation['offset'], $translation['length'] );
         }
 
-        preg_match_all( '/^msgid "(.+)"\nmsgstr "(.+)"$/m', $po, $entries, PREG_SET_ORDER );
+        // A context entry is compiled as "context\x04msgid", a plural one with
+        // its forms joined by a null byte, as gettext and WordPress read them.
+        preg_match_all( '/^(?:msgctxt "(.+)"\n)?msgid "(.+)"\n(?:msgid_plural ".+"\nmsgstr\[0\] "(.+)"\nmsgstr\[1\] "(.+)"|msgstr "(.+)")$/m', $po, $entries, PREG_SET_ORDER );
 
         $this->assertNotEmpty( $entries );
         foreach ( $entries as $entry ) {
-            $msgid = stripcslashes( $entry[1] );
+            $msgid = ( '' !== $entry[1] ? stripcslashes( $entry[1] ) . "\x04" : '' ) . stripcslashes( $entry[2] );
+            $text  = isset( $entry[5] ) ? stripcslashes( $entry[5] ) : stripcslashes( $entry[3] ) . "\0" . stripcslashes( $entry[4] );
 
             $this->assertArrayHasKey( $msgid, $compiled, 'Missing from the .mo: ' . $msgid );
-            $this->assertSame( stripcslashes( $entry[2] ), $compiled[ $msgid ] );
+            $this->assertSame( $text, $compiled[ $msgid ] );
         }
 
         // Every compiled string but the header comes from the .po.

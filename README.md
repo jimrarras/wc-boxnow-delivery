@@ -344,6 +344,10 @@ vendor/bin/phpunit -c phpunit-integration.xml   # integration
 ./build.sh                                      # release zip
 ```
 
+Translations are maintained by hand with two small dev scripts (not included in the release zip):
+- `php bin/make-pot.php` scans the plugin source for translatable strings and writes `languages/wc-boxnow-delivery.pot`
+- `php bin/make-mo.php languages/wc-boxnow-delivery-el.po` compiles the Greek catalogue into its `.mo`
+
 Integration tests skip cleanly when `.env` is absent. Tests that would create
 real staging parcels additionally require `BOXNOW_ALLOW_WRITE_TESTS=1`.
 
