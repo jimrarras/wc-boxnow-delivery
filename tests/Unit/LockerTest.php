@@ -74,12 +74,12 @@ class LockerTest extends TestCase {
 
     public function test_javascript_posts_the_locker_name_alongside_the_id() {
         // I9: the classic script must carry the locker name through to
-        // #boxnow_locker_name and the wc_boxnow_set_locker session write, the
-        // same way it already does for the id, so save_classic_checkout()
-        // has a name to persist.
+        // every boxnow_locker_name field and the wc_boxnow_set_locker session
+        // write, the same way it already does for the id, so
+        // save_classic_checkout() has a name to persist.
         $js = file_get_contents( dirname( __DIR__, 2 ) . '/assets/js/boxnow-locker.js' );
 
-        $this->assertStringContainsString( "'#boxnow_locker_name'", $js );
+        $this->assertStringContainsString( "'input[name=\"boxnow_locker_name\"]'", $js );
         $this->assertStringContainsString( 'locker_name:', $js );
     }
 
@@ -99,6 +99,60 @@ class LockerTest extends TestCase {
         $order = $this->createOrderMock( array( 'shipping_methods' => array( $shipping_item ) ) );
 
         $this->assertFalse( \WC_BoxNow_Locker::order_has_boxnow( $order ) );
+    }
+
+    // ── Orders that ship with another carrier too, or instead ─────────
+
+    private function orderWithLines( array $method_ids ) {
+        $items = array();
+        foreach ( $method_ids as $method_id ) {
+            $item = \Mockery::mock( 'WC_Order_Item_Shipping' );
+            $item->shouldReceive( 'get_method_id' )->andReturn( $method_id );
+            $items[] = $item;
+        }
+
+        return $this->createOrderMock( array( 'shipping_methods' => $items ) );
+    }
+
+    /**
+     * @dataProvider foreignLineCases
+     */
+    public function test_foreign_shipping_lines_lists_the_non_boxnow_lines( array $lines, array $expected ) {
+        $this->assertSame( $expected, \WC_BoxNow_Locker::foreign_shipping_lines( $this->orderWithLines( $lines ) ) );
+    }
+
+    public function foreignLineCases() {
+        return array(
+            'geniki next to boxnow'      => array( array( 'geniki_courier', 'box_now_delivery' ), array( 'geniki_courier' ) ),
+            'acs next to boxnow'         => array( array( 'box_now_delivery', 'acs_courier' ), array( 'acs_courier' ) ),
+            'two boxnow lines'           => array( array( 'box_now_delivery', 'box_now_delivery' ), array() ),
+            'admin N/A line is ignored'  => array( array( 'box_now_delivery', '' ), array() ),
+            'repeated method once'       => array( array( 'flat_rate', 'box_now_delivery', 'flat_rate' ), array( 'flat_rate' ) ),
+            'no lines'                   => array( array(), array() ),
+        );
+    }
+
+    public function test_order_has_boxnow_is_still_true_for_a_mixed_order() {
+        // order_has_boxnow() gates manual creation, the metabox and tracking,
+        // so a mixed order must keep all of those.
+        $this->assertTrue( \WC_BoxNow_Locker::order_has_boxnow( $this->orderWithLines( array( 'geniki_courier', 'box_now_delivery' ) ) ) );
+    }
+
+    /**
+     * @dataProvider movedOffCases
+     */
+    public function test_order_moved_off_boxnow_is_true_only_when_another_line_replaced_it( array $lines, $expected ) {
+        $this->assertSame( $expected, \WC_BoxNow_Locker::order_moved_off_boxnow( $this->orderWithLines( $lines ) ) );
+    }
+
+    public function movedOffCases() {
+        return array(
+            'no shipping line keeps the old behaviour' => array( array(), false ),
+            'boxnow line'                              => array( array( 'box_now_delivery' ), false ),
+            'flat_rate replaced it'                    => array( array( 'flat_rate' ), true ),
+            'acs_courier replaced it'                  => array( array( 'acs_courier' ), true ),
+            'boxnow next to flat_rate'                 => array( array( 'box_now_delivery', 'flat_rate' ), false ),
+        );
     }
 
     public function test_classic_validation_adds_an_error_when_no_locker_is_selected() {
@@ -201,15 +255,22 @@ class LockerTest extends TestCase {
 
     /**
      * Stub WC() with a session holding $values (key => value).
+     *
+     * @return object The session; every set() call is recorded in ->written.
      */
     private function stubSession( array $values ) {
         $session = new class( $values ) {
             private $values;
+            public $written = array();
             public function __construct( array $values ) {
                 $this->values = $values;
             }
             public function get( $key, $default = null ) {
                 return array_key_exists( $key, $this->values ) ? $this->values[ $key ] : $default;
+            }
+            public function set( $key, $value ) {
+                $this->values[ $key ]  = $value;
+                $this->written[ $key ] = $value;
             }
         };
 
@@ -217,6 +278,8 @@ class LockerTest extends TestCase {
         $wc->session = $session;
 
         Functions\when( 'WC' )->justReturn( $wc );
+
+        return $session;
     }
 
     public function test_save_classic_checkout_ignores_a_switched_shipping_method() {
@@ -630,6 +693,46 @@ class LockerTest extends TestCase {
         $this->assertStringContainsString( "msgid \"Cash on delivery is not available for BOX NOW locker delivery. Please choose another payment method.\"\nmsgstr \"Η αντικαταβολή δεν είναι διαθέσιμη για παράδοση σε BOX NOW locker. Επιλέξτε άλλον τρόπο πληρωμής.\"", $po );
         $this->assertStringContainsString( "msgid \"Please select a locker first!\"\nmsgstr \"Επιλέξτε πρώτα ένα locker.\"", $po );
         $this->assertStringContainsString( "msgid \"No locker supplied.\"\nmsgstr \"Δεν επιλέχθηκε locker.\"", $po );
+        $this->assertStringContainsString( "msgid \"Your shipping method was updated. Please review your order and place it again.\"\nmsgstr \"Η μέθοδος αποστολής ενημερώθηκε. Ελέγξτε την παραγγελία σας και ολοκληρώστε την ξανά.\"", $po );
+    }
+
+    public function test_compiled_greek_translation_carries_every_po_entry() {
+        // WordPress reads the .mo, so a .po entry that was never compiled
+        // shows in English. The header must also pass both WordPress
+        // loaders: POMO (before 6.5) rejects the file unless the hash table
+        // starts right after the translations table, and 6.5+ sizes that
+        // table from the same offset.
+        $dir = dirname( __DIR__, 2 ) . '/languages';
+        $mo  = file_get_contents( $dir . '/wc-boxnow-delivery-el.mo' );
+        $po  = str_replace( "\r\n", "\n", file_get_contents( $dir . '/wc-boxnow-delivery-el.po' ) );
+
+        $header = unpack( 'Vmagic/Vrevision/Vtotal/Voriginals/Vtranslations/Vhash_size/Vhash_addr', substr( $mo, 0, 28 ) );
+
+        $this->assertSame( 0x950412de, $header['magic'] );
+        $this->assertSame( 0, $header['revision'] );
+        $this->assertSame( $header['total'] * 8, $header['translations'] - $header['originals'] );
+        $this->assertSame( $header['total'] * 8, $header['hash_addr'] - $header['translations'] );
+
+        $compiled = array();
+        for ( $i = 0; $i < $header['total']; $i++ ) {
+            $original    = unpack( 'Vlength/Voffset', substr( $mo, $header['originals'] + 8 * $i, 8 ) );
+            $translation = unpack( 'Vlength/Voffset', substr( $mo, $header['translations'] + 8 * $i, 8 ) );
+
+            $compiled[ substr( $mo, $original['offset'], $original['length'] ) ] = substr( $mo, $translation['offset'], $translation['length'] );
+        }
+
+        preg_match_all( '/^msgid "(.+)"\nmsgstr "(.+)"$/m', $po, $entries, PREG_SET_ORDER );
+
+        $this->assertNotEmpty( $entries );
+        foreach ( $entries as $entry ) {
+            $msgid = stripcslashes( $entry[1] );
+
+            $this->assertArrayHasKey( $msgid, $compiled, 'Missing from the .mo: ' . $msgid );
+            $this->assertSame( stripcslashes( $entry[2] ), $compiled[ $msgid ] );
+        }
+
+        // Every compiled string but the header comes from the .po.
+        $this->assertCount( count( $entries ) + 1, $compiled );
     }
 
     public function test_translated_error_messages_still_match_the_source_strings() {
@@ -643,6 +746,7 @@ class LockerTest extends TestCase {
             'Please select a locker first!',
             'No locker supplied.',
             'Choose a BOX NOW locker',
+            'Your shipping method was updated. Please review your order and place it again.',
         ) as $msgid ) {
             $this->assertStringContainsString( "__( '" . $msgid . "', 'wc-boxnow-delivery' )", $src );
         }
@@ -735,5 +839,551 @@ class LockerTest extends TestCase {
             $order,
             array( 'extensions' => array( 'wc-boxnow-delivery' => array( 'locker_id' => 'APM-9' ) ) )
         );
+    }
+
+    // ── Pay-for-order page: the order being paid decides, not the cart ───
+
+    private function stubOrderPay( $order ) {
+        Functions\when( 'is_wc_endpoint_url' )->alias( function ( $endpoint = false ) {
+            return 'order-pay' === $endpoint;
+        } );
+        Functions\when( 'get_query_var' )->alias( function ( $var ) {
+            return 'order-pay' === $var ? '1001' : '';
+        } );
+        Functions\when( 'wc_get_order' )->alias( function ( $id ) use ( $order ) {
+            return 1001 === $id ? $order : false;
+        } );
+    }
+
+    public function test_cod_is_removed_on_order_pay_for_a_boxnow_order_even_with_an_empty_cart_session() {
+        // The cart session on the pay page may be empty, or on another
+        // carrier. WooCommerce's own COD gateway reads the order there too.
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array() );
+        $this->stubOrderPay( $this->orderWithLines( array( 'box_now_delivery' ) ) );
+
+        $result = \WC_BoxNow_Locker::filter_payment_gateways( $this->gateways() );
+
+        $this->assertArrayNotHasKey( 'cod', $result );
+        $this->assertArrayHasKey( 'bacs', $result );
+    }
+
+    public function test_cod_is_kept_on_order_pay_for_another_carriers_order_while_the_cart_is_on_boxnow() {
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_shipping_methods' => array( 'box_now_delivery:1' ) ) );
+        $this->stubOrderPay( $this->orderWithLines( array( 'geniki_courier' ) ) );
+
+        $this->assertArrayHasKey( 'cod', \WC_BoxNow_Locker::filter_payment_gateways( $this->gateways() ) );
+    }
+
+    public function test_cod_is_kept_on_order_pay_when_the_option_is_off() {
+        $this->stubGetOption( array() );
+        $this->stubOrderPay( $this->orderWithLines( array( 'box_now_delivery' ) ) );
+
+        $this->assertArrayHasKey( 'cod', \WC_BoxNow_Locker::filter_payment_gateways( $this->gateways() ) );
+    }
+
+    public function test_cod_is_left_alone_on_order_pay_when_the_order_cannot_be_loaded() {
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_shipping_methods' => array( 'box_now_delivery:1' ) ) );
+        $this->stubOrderPay( false );
+
+        $this->assertArrayHasKey( 'cod', \WC_BoxNow_Locker::filter_payment_gateways( $this->gateways() ) );
+    }
+
+    public function test_order_being_paid_is_false_outside_the_order_pay_endpoint() {
+        $this->assertFalse( \WC_BoxNow_Locker::order_being_paid() );
+    }
+
+    // ── Keep the chosen rate when another carrier's rate comes or goes ──
+
+    /**
+     * Rates offered for a package, keyed by rate id, as WooCommerce passes them.
+     */
+    private function rates( array $ids ) {
+        $rates = array();
+        foreach ( $ids as $id ) {
+            $rates[ $id ] = (object) array( 'id' => $id );
+        }
+        return $rates;
+    }
+
+    /**
+     * Stub WC() with a cart whose coupons grant free shipping or not.
+     */
+    private function stubCartCoupons( array $free_shipping_flags ) {
+        $coupons = array();
+        foreach ( $free_shipping_flags as $flag ) {
+            $coupon = \Mockery::mock( 'WC_Coupon' );
+            $coupon->shouldReceive( 'get_free_shipping' )->andReturn( $flag );
+            $coupons[] = $coupon;
+        }
+
+        $cart = \Mockery::mock( 'WC_Cart' );
+        $cart->shouldReceive( 'get_coupons' )->andReturn( $coupons );
+
+        $wc          = new \stdClass();
+        $wc->session = null;
+        $wc->cart    = $cart;
+
+        Functions\when( 'WC' )->justReturn( $wc );
+    }
+
+    public function test_keep_chosen_rate_keeps_a_still_offered_boxnow_rate_over_the_default() {
+        // ACS 'exclusive' withdraws acs_points while cash on delivery is
+        // selected; the key list changes and WooCommerce resets to the first
+        // rate although BOX NOW is still offered.
+        $rates = $this->rates( array( 'acs_courier:1', 'box_now_delivery:5', 'geniki_courier:3' ) );
+
+        $this->assertSame( 'box_now_delivery:5', \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', $rates, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_does_not_pull_another_carrier_into_boxnow_when_it_is_listed_first() {
+        // Otherwise an ACS order is saved as BOX NOW with a stale locker.
+        $rates = $this->rates( array( 'box_now_delivery:5', 'acs_courier:1', 'acs_points:2' ) );
+
+        $this->assertSame( 'acs_courier:1', \WC_BoxNow_Locker::keep_chosen_rate( 'box_now_delivery:5', $rates, 'acs_courier:1' ) );
+    }
+
+    public function test_keep_chosen_rate_leaves_other_carriers_to_woocommerce() {
+        $rates = $this->rates( array( 'acs_courier:1', 'geniki_points:4', 'flat_rate:7' ) );
+
+        $this->assertSame( 'acs_courier:1', \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', $rates, 'geniki_points:4' ) );
+        $this->assertSame( 'free_shipping:9', \WC_BoxNow_Locker::keep_chosen_rate( 'free_shipping:9', $this->rates( array( 'free_shipping:9', 'acs_courier:1' ) ), 'acs_courier:1' ) );
+    }
+
+    public function test_keep_chosen_rate_yields_to_a_free_shipping_coupon() {
+        // WooCommerce moves the customer to free shipping when a coupon
+        // grants it; the net must not undo that.
+        $this->stubCartCoupons( array( false, true ) );
+        $rates = $this->rates( array( 'free_shipping:9', 'box_now_delivery:5' ) );
+
+        $this->assertSame( 'free_shipping:9', \WC_BoxNow_Locker::keep_chosen_rate( 'free_shipping:9', $rates, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_keeps_boxnow_over_a_first_listed_free_shipping_rate_without_a_coupon() {
+        $this->stubCartCoupons( array( false ) );
+        $rates = $this->rates( array( 'free_shipping:9', 'box_now_delivery:5' ) );
+
+        $this->assertSame( 'box_now_delivery:5', \WC_BoxNow_Locker::keep_chosen_rate( 'free_shipping:9', $rates, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_keeps_boxnow_over_free_shipping_when_woocommerce_has_no_cart() {
+        // Default TestCase WC(): no cart property at all.
+        $rates = $this->rates( array( 'free_shipping:9', 'box_now_delivery:5' ) );
+
+        $this->assertSame( 'box_now_delivery:5', \WC_BoxNow_Locker::keep_chosen_rate( 'free_shipping:9', $rates, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_falls_back_when_boxnow_is_no_longer_offered() {
+        $rates = $this->rates( array( 'acs_courier:1', 'geniki_courier:3' ) );
+
+        $this->assertSame( 'acs_courier:1', \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', $rates, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_leaves_an_empty_default_alone() {
+        // WooCommerce's early-return branch (Blocks, costs hidden until an
+        // address is entered) passes ''.
+        $rates = $this->rates( array( 'box_now_delivery:5', 'local_pickup:8' ) );
+
+        $this->assertSame( '', \WC_BoxNow_Locker::keep_chosen_rate( '', $rates, 'box_now_delivery:5' ) );
+    }
+
+    /**
+     * @dataProvider missingChosenCases
+     */
+    public function test_keep_chosen_rate_ignores_a_missing_chosen_method( $chosen ) {
+        // First visit: WooCommerce passes false when nothing was chosen yet.
+        $rates = $this->rates( array( 'acs_courier:1', 'box_now_delivery:5' ) );
+
+        $this->assertSame( 'acs_courier:1', \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', $rates, $chosen ) );
+    }
+
+    public function missingChosenCases() {
+        return array(
+            'false'        => array( false ),
+            'empty string' => array( '' ),
+            'null'         => array( null ),
+            'array'        => array( array( 'box_now_delivery:5' ) ),
+        );
+    }
+
+    public function test_keep_chosen_rate_ignores_a_malformed_rate_list() {
+        $this->assertSame( 'acs_courier:1', \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', null, 'box_now_delivery:5' ) );
+    }
+
+    public function test_keep_chosen_rate_is_idempotent() {
+        $rates = $this->rates( array( 'acs_courier:1', 'box_now_delivery:5' ) );
+
+        $once  = \WC_BoxNow_Locker::keep_chosen_rate( 'acs_courier:1', $rates, 'box_now_delivery:5' );
+        $twice = \WC_BoxNow_Locker::keep_chosen_rate( $once, $rates, 'box_now_delivery:5' );
+
+        $this->assertSame( 'box_now_delivery:5', $twice );
+    }
+
+    /**
+     * @dataProvider compositionCases
+     */
+    public function test_keep_chosen_rate_composes_with_another_carriers_net_in_either_order( $default, $chosen, $expected ) {
+        // Geniki Taxydromiki registers the same scoped rule for its own rates
+        // on the same filter and priority. Whichever runs first, a rate change
+        // must end on the same rate.
+        $geniki = function ( $default, $rates, $chosen ) {
+            $own = function ( $id ) {
+                return 0 === strpos( (string) $id, 'geniki_' );
+            };
+            if ( ! is_string( $chosen ) || '' === $chosen || '' === $default || $chosen === $default || ! isset( $rates[ $chosen ] ) ) {
+                return $default;
+            }
+            return ( $own( $chosen ) || $own( $default ) ) ? $chosen : $default;
+        };
+        $boxnow = array( 'WC_BoxNow_Locker', 'keep_chosen_rate' );
+        $rates  = $this->rates( array( 'acs_courier:1', 'acs_points:2', 'geniki_courier:3', 'geniki_points:4', 'box_now_delivery:5' ) );
+
+        $boxnow_first = $geniki( call_user_func( $boxnow, $default, $rates, $chosen ), $rates, $chosen );
+        $geniki_first = call_user_func( $boxnow, $geniki( $default, $rates, $chosen ), $rates, $chosen );
+
+        $this->assertSame( $expected, $boxnow_first );
+        $this->assertSame( $expected, $geniki_first );
+    }
+
+    public function compositionCases() {
+        return array(
+            'boxnow kept over acs first'      => array( 'acs_courier:1', 'box_now_delivery:5', 'box_now_delivery:5' ),
+            'boxnow kept over geniki first'   => array( 'geniki_courier:3', 'box_now_delivery:5', 'box_now_delivery:5' ),
+            'geniki kept over boxnow first'   => array( 'box_now_delivery:5', 'geniki_points:4', 'geniki_points:4' ),
+            'acs not pulled into boxnow'      => array( 'box_now_delivery:5', 'acs_points:2', 'acs_points:2' ),
+            'acs not pulled into geniki'      => array( 'geniki_courier:3', 'acs_points:2', 'acs_points:2' ),
+            'acs to acs left to woocommerce'  => array( 'acs_courier:1', 'acs_points:2', 'acs_courier:1' ),
+        );
+    }
+
+    public function test_constructor_registers_keep_chosen_rate_at_priority_20_with_three_args() {
+        // bootstrap.php defines a no-op add_filter(), so the registration is
+        // pinned on the source, as elsewhere in this suite.
+        $source = file_get_contents( dirname( __DIR__, 2 ) . '/includes/class-boxnow-locker.php' );
+
+        $this->assertStringContainsString(
+            "add_filter( 'woocommerce_shipping_chosen_method', array( __CLASS__, 'keep_chosen_rate' ), 20, 3 );",
+            $source
+        );
+    }
+
+    // ── Fail closed when WooCommerce swapped the posted rate ─────────────
+
+    public function test_classic_validation_flags_a_swap_away_from_boxnow() {
+        // update_session() stored the posted BOX NOW rate, the recalculation
+        // reset it, and create_order() would use the session value. No locker
+        // was picked either, yet only the swap is reported: the next submit
+        // runs every check again on the refreshed checkout.
+        $session = $this->stubSession( array( 'chosen_shipping_methods' => array( 'acs_courier:1' ) ) );
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'get_error_codes' )->andReturn( array() );
+        $errors->shouldReceive( 'add' )->once()->with( 'boxnow_shipping_method_changed', 'Your shipping method was updated. Please review your order and place it again.' );
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout(
+            array( 'shipping_method' => array( 'box_now_delivery:5' ), 'payment_method' => 'bacs' ),
+            $errors
+        );
+
+        $this->assertTrue( $session->written['refresh_totals'], 'checkout.js refreshes the checkout on a failure with refresh set.' );
+    }
+
+    public function test_classic_validation_flags_an_other_carrier_order_swapped_into_boxnow() {
+        $session = $this->stubSession( array( 'chosen_shipping_methods' => array( 'box_now_delivery:5' ) ) );
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'get_error_codes' )->andReturn( array() );
+        $errors->shouldReceive( 'add' )->once()->with( 'boxnow_shipping_method_changed', \Mockery::type( 'string' ) );
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout(
+            array( 'shipping_method' => array( 'acs_courier:1' ) ),
+            $errors
+        );
+
+        $this->assertTrue( $session->written['refresh_totals'] );
+    }
+
+    public function test_classic_validation_does_not_repeat_genikis_identical_message() {
+        // A swap between a Geniki and a BOX NOW rate: Geniki Taxydromiki 1.0.1
+        // already refused the order with the same words.
+        $session = $this->stubSession( array( 'chosen_shipping_methods' => array( 'geniki_courier:3' ) ) );
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'get_error_codes' )->andReturn( array( 'geniki_shipping_method_changed' ) );
+        $errors->shouldReceive( 'add' )->never();
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout(
+            array( 'shipping_method' => array( 'box_now_delivery:5' ) ),
+            $errors
+        );
+
+        $this->assertTrue( $session->written['refresh_totals'], 'The checkout still refreshes.' );
+    }
+
+    public function test_classic_validation_does_not_flag_when_posted_and_session_agree() {
+        $session = $this->stubSession( array( 'chosen_shipping_methods' => array( 'box_now_delivery:5' ) ) );
+        $_POST['boxnow_locker_id'] = 'APM-9';
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'add' )->never();
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout(
+            array( 'shipping_method' => array( 'box_now_delivery:5' ) ),
+            $errors
+        );
+
+        $this->assertSame( array(), $session->written );
+    }
+
+    public function test_classic_validation_ignores_a_swap_between_other_carriers() {
+        // ACS moving its own customer between ACS rates is ACS's business.
+        $session = $this->stubSession( array( 'chosen_shipping_methods' => array( 'acs_courier:1' ) ) );
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'add' )->never();
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout(
+            array( 'shipping_method' => array( 'acs_points:2' ) ),
+            $errors
+        );
+
+        $this->assertSame( array(), $session->written );
+    }
+
+    /**
+     * @dataProvider unpostedRateCases
+     */
+    public function test_classic_validation_skips_the_swap_check_for_rates_that_were_not_posted( $posted, array $session_methods ) {
+        // Nothing posted (the session fallback below takes over), a non-string
+        // entry, or an index only one side has (a Subscriptions recurring
+        // cart key, for example) is not a swap.
+        $session = $this->stubSession( array(
+            'chosen_shipping_methods'      => $session_methods,
+            \WC_BoxNow_Locker::SESSION_KEY => 'APM-42',
+        ) );
+
+        $errors = \Mockery::mock( 'WP_Error' );
+        $errors->shouldReceive( 'add' )->never();
+
+        \WC_BoxNow_Locker::instance()->validate_classic_checkout( array( 'shipping_method' => $posted ), $errors );
+
+        $this->assertSame( array(), $session->written );
+    }
+
+    public function unpostedRateCases() {
+        return array(
+            'field not posted'            => array( '', array( 'box_now_delivery:5' ) ),
+            'non-string entry'            => array( array( 5 ), array( 'acs_courier:1' ) ),
+            'index missing in session'    => array( array( 1 => 'box_now_delivery:5' ), array( 'acs_courier:1' ) ),
+            'index missing in the post'   => array( array( 'acs_courier:1' ), array( 'acs_courier:1', 'box_now_delivery:5' ) ),
+        );
+    }
+
+    // ── A checkout refresh stores the posted locker (lost-update repair) ──
+
+    public function test_update_order_review_stores_the_posted_locker_in_the_session() {
+        // A refresh that loaded the session before wc_boxnow_set_locker saved
+        // B writes the old locker back. The posted field is the pick on screen.
+        $session = $this->stubSession( array( \WC_BoxNow_Locker::SESSION_KEY => 'A-1', \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker A' ) );
+
+        \WC_BoxNow_Locker::instance()->sync_posted_locker( 'billing_postcode=10563&shipping_method%5B0%5D=box_now_delivery%3A5&boxnow_locker_id=B-2&boxnow_locker_name=Locker+B&payment_method=cod' );
+
+        $this->assertSame(
+            array( \WC_BoxNow_Locker::SESSION_KEY => 'B-2', \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker B' ),
+            $session->written
+        );
+        $this->assertStringContainsString( 'value="B-2"', $this->renderPicker(), 'The re-rendered picker shows the posted locker.' );
+    }
+
+    public function test_update_order_review_stores_an_empty_name_when_none_was_posted() {
+        $session = $this->stubSession( array( \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker A' ) );
+
+        \WC_BoxNow_Locker::instance()->sync_posted_locker( 'boxnow_locker_id=B-2' );
+
+        $this->assertSame( 'B-2', $session->written[ \WC_BoxNow_Locker::SESSION_KEY ] );
+        $this->assertSame( '', $session->written[ \WC_BoxNow_Locker::SESSION_KEY_NAME ], 'A name for the old locker must not survive.' );
+    }
+
+    /**
+     * @dataProvider postedWithoutLocker
+     */
+    public function test_update_order_review_leaves_the_session_alone_without_a_posted_locker( $post_data ) {
+        $session = $this->stubSession( array( \WC_BoxNow_Locker::SESSION_KEY => 'A-1' ) );
+
+        \WC_BoxNow_Locker::instance()->sync_posted_locker( $post_data );
+
+        $this->assertSame( array(), $session->written );
+    }
+
+    public function postedWithoutLocker() {
+        return array(
+            'field absent'   => array( 'billing_postcode=10563&shipping_method%5B0%5D=flat_rate%3A2' ),
+            'empty id'       => array( 'boxnow_locker_id=&boxnow_locker_name=' ),
+            'array injected' => array( 'boxnow_locker_id%5B%5D=B-2' ),
+            'empty post'     => array( '' ),
+            'not a string'   => array( array( 'boxnow_locker_id' => 'B-2' ) ),
+        );
+    }
+
+    public function test_update_order_review_without_a_session_is_a_no_op() {
+        // Default TestCase WC(): WooCommerce present, no session.
+        \WC_BoxNow_Locker::instance()->sync_posted_locker( 'boxnow_locker_id=B-2' );
+
+        $this->addToAssertionCount( 1 );
+    }
+
+    public function test_update_order_review_hook_is_registered() {
+        $source = file_get_contents( dirname( __DIR__, 2 ) . '/includes/class-boxnow-locker.php' );
+
+        $this->assertStringContainsString(
+            "add_action( 'woocommerce_checkout_update_order_review', array( \$this, 'sync_posted_locker' ) );",
+            $source
+        );
+    }
+
+    public function test_classic_script_reapplies_the_picked_locker_before_refreshing() {
+        // sync_posted_locker() stores whatever the refresh posts, so the
+        // script must put the pick back into the picker first: a refresh that
+        // landed during wc_boxnow_set_locker may have rendered the old locker.
+        $js     = file_get_contents( dirname( __DIR__, 2 ) . '/assets/js/boxnow-locker.js' );
+        $start  = strpos( $js, '.always(' );
+        $end    = strpos( $js, "trigger( 'update_checkout' )", $start );
+        $always = substr( $js, $start, $end - $start );
+
+        $this->assertNotFalse( $start );
+        $this->assertStringContainsString( 'applyPicked();', $always );
+        $this->assertStringContainsString( 'picked = locker;', $js, 'The latest pick is kept at module level, so out-of-order responses end on it.' );
+    }
+
+    public function test_classic_script_writes_the_pick_into_every_picker() {
+        // A cart split into several packages lists BOX NOW once per package,
+        // so the form holds several boxnow_locker_id fields. PHP keeps the
+        // last of a repeated field (sync_posted_locker() and $_POST at Place
+        // order), so a pick written only into the first one is replaced by
+        // the older value of the next.
+        $js    = file_get_contents( dirname( __DIR__, 2 ) . '/assets/js/boxnow-locker.js' );
+        $start = strpos( $js, 'function applyPicked()' );
+        $end   = strpos( $js, 'function selectLocker(', $start );
+        $body  = substr( $js, $start, $end - $start );
+
+        $this->assertNotFalse( $start );
+        $this->assertStringContainsString( "$( 'input[name=\"boxnow_locker_id\"]' ).val( picked.id );", $body );
+        $this->assertStringContainsString( "$( 'input[name=\"boxnow_locker_name\"]' ).val( picked.name || '' );", $body );
+        $this->assertStringNotContainsString( "'#boxnow_locker_id'", $js, 'An #id selector reaches only the first picker.' );
+        $this->assertStringNotContainsString( "'#boxnow_locker_name'", $js, 'An #id selector reaches only the first picker.' );
+    }
+
+    public function test_every_picker_carries_the_same_named_fields() {
+        // The contract the script relies on: each picker, one per BOX NOW
+        // rate, posts the locker under the same plain names.
+        $this->stubSession( array( \WC_BoxNow_Locker::SESSION_KEY => 'C-3', \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker C' ) );
+
+        $html = $this->renderPicker() . $this->renderPicker();
+
+        $this->assertSame( 2, substr_count( $html, 'name="boxnow_locker_id" id="boxnow_locker_id" value="C-3"' ) );
+        $this->assertSame( 2, substr_count( $html, 'name="boxnow_locker_name" id="boxnow_locker_name" value="Locker C"' ) );
+    }
+
+    public function test_update_order_review_with_a_field_per_package_stores_the_last_copy() {
+        // parse_str() keeps the last of a repeated field, which is why the
+        // script writes the pick into every copy: with both copies equal the
+        // session gets the pick.
+        $session = $this->stubSession( array( \WC_BoxNow_Locker::SESSION_KEY => 'B-2', \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker B' ) );
+
+        \WC_BoxNow_Locker::instance()->sync_posted_locker( 'shipping_method%5B0%5D=box_now_delivery%3A5&boxnow_locker_id=C-3&boxnow_locker_name=Locker+C&shipping_method%5B1%5D=box_now_delivery%3A5&boxnow_locker_id=C-3&boxnow_locker_name=Locker+C' );
+
+        $this->assertSame(
+            array( \WC_BoxNow_Locker::SESSION_KEY => 'C-3', \WC_BoxNow_Locker::SESSION_KEY_NAME => 'Locker C' ),
+            $session->written
+        );
+    }
+
+    // ── A leftover ACS Point on an order that now ships with BOX NOW ─────
+
+    private function acsPointMeta() {
+        return array(
+            '_acs_point_id'      => 'acs1',
+            '_acs_point_type'    => 'locker',
+            '_acs_point_name'    => 'ACS Smart Point Kifisia',
+            '_acs_point_address' => 'Kifisias 10, 14562 Kifisia',
+            '_acs_point_station' => 'KI',
+            '_acs_point_branch'  => '5',
+            '_acs_point_cod'     => '0',
+        );
+    }
+
+    public function test_classic_checkout_drops_a_leftover_acs_point_from_a_boxnow_order() {
+        // A failed card payment on an ACS Points order, placed again with BOX
+        // NOW, resumes the same order with the ACS Point still on it.
+        $_POST['boxnow_locker_id'] = 'APM-9';
+        $order = $this->createOrderMock( array(
+            'meta'             => $this->acsPointMeta(),
+            'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ) ),
+        ) );
+
+        \WC_BoxNow_Locker::instance()->save_classic_checkout( $order );
+
+        $this->assertSame( 'APM-9', $order->updated_meta['_boxnow_locker_id'] );
+        $this->assertEqualsCanonicalizing( \WC_BoxNow_Locker::ACS_POINT_META_KEYS, $order->deleted_meta );
+        $this->assertSame( array(), $order->notes, 'Checkout itself adds no note.' );
+    }
+
+    public function test_the_acs_point_keys_match_what_wc_acs_courier_writes() {
+        $this->assertSame(
+            array( '_acs_point_id', '_acs_point_type', '_acs_point_name', '_acs_point_address', '_acs_point_station', '_acs_point_branch', '_acs_point_cod' ),
+            \WC_BoxNow_Locker::ACS_POINT_META_KEYS
+        );
+    }
+
+    public function test_the_acs_point_is_kept_on_other_carriers_orders_and_while_acs_owns_it() {
+        $_POST['boxnow_locker_id'] = 'APM-9';
+
+        $orders = array(
+            'acs_points order'     => $this->createOrderMock( array( 'meta' => $this->acsPointMeta(), 'shipping_methods' => array( $this->shippingItem( 'acs_points' ) ) ) ),
+            'split with acs_points' => $this->createOrderMock( array( 'meta' => $this->acsPointMeta(), 'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ), $this->shippingItem( 'acs_points' ) ) ) ),
+            'acs voucher exists'   => $this->createOrderMock( array( 'meta' => $this->acsPointMeta() + array( '_acs_voucher_no' => '7001' ), 'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ) ) ) ),
+            'acs_courier order'    => $this->createOrderMock( array( 'meta' => $this->acsPointMeta(), 'shipping_methods' => array( $this->shippingItem( 'acs_courier' ) ) ) ),
+        );
+
+        foreach ( $orders as $label => $order ) {
+            \WC_BoxNow_Locker::instance()->save_classic_checkout( $order );
+            $this->assertSame( array(), $order->deleted_meta, $label );
+            $this->assertSame( '', \WC_BoxNow_Locker::clear_acs_point_meta( $order ), $label );
+        }
+    }
+
+    public function test_clear_acs_point_meta_reports_the_removed_point() {
+        $order = $this->createOrderMock( array(
+            'meta'             => $this->acsPointMeta(),
+            'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ) ),
+        ) );
+
+        $this->assertSame( 'ACS Smart Point Kifisia, Kifisias 10, 14562 Kifisia', \WC_BoxNow_Locker::clear_acs_point_meta( $order ) );
+        $this->assertSame( '', \WC_BoxNow_Locker::clear_acs_point_meta( $order ), 'Nothing is left to remove the second time.' );
+    }
+
+    public function test_clear_acs_point_meta_is_a_no_op_without_an_acs_point() {
+        $order = $this->createOrderMock( array( 'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ) ) ) );
+
+        $this->assertSame( '', \WC_BoxNow_Locker::clear_acs_point_meta( $order ) );
+        $this->assertSame( array(), $order->deleted_meta );
+    }
+
+    public function test_a_boxnow_checkout_without_a_locker_throws_before_touching_the_acs_point() {
+        $order = $this->createOrderMock( array(
+            'meta'             => $this->acsPointMeta(),
+            'shipping_methods' => array( $this->shippingItem( 'box_now_delivery' ) ),
+        ) );
+
+        try {
+            \WC_BoxNow_Locker::instance()->save_classic_checkout( $order );
+            $this->fail( 'Expected the missing-locker exception.' );
+        } catch ( \Exception $e ) {
+            $this->assertStringContainsString( 'BOX NOW locker', $e->getMessage() );
+        }
+
+        $this->assertSame( array(), $order->deleted_meta );
     }
 }

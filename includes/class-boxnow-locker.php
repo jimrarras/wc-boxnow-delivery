@@ -16,6 +16,20 @@ class WC_BoxNow_Locker {
     const SESSION_KEY        = 'boxnow_selected_locker_id';
     const SESSION_KEY_NAME   = 'boxnow_selected_locker_name';
 
+    /**
+     * Order meta WC ACS Courier writes for an ACS Point (since 1.1.0,
+     * unchanged in 1.3.x). See clear_acs_point_meta().
+     */
+    const ACS_POINT_META_KEYS = array(
+        '_acs_point_id',
+        '_acs_point_type',
+        '_acs_point_name',
+        '_acs_point_address',
+        '_acs_point_station',
+        '_acs_point_branch',
+        '_acs_point_cod',
+    );
+
     /** @var WC_BoxNow_Locker|null */
     private static $instance = null;
 
@@ -47,8 +61,13 @@ class WC_BoxNow_Locker {
         add_action( 'woocommerce_checkout_create_order', array( $this, 'save_classic_checkout' ), 10, 2 );
         add_filter( 'woocommerce_available_payment_gateways', array( __CLASS__, 'filter_payment_gateways' ) );
 
+        // After WooCommerce's own choice (priority 10), and only for changes
+        // that involve a BOX NOW rate. See keep_chosen_rate().
+        add_filter( 'woocommerce_shipping_chosen_method', array( __CLASS__, 'keep_chosen_rate' ), 20, 3 );
+
         add_action( 'wp_ajax_wc_boxnow_set_locker', array( $this, 'ajax_set_locker' ) );
         add_action( 'wp_ajax_nopriv_wc_boxnow_set_locker', array( $this, 'ajax_set_locker' ) );
+        add_action( 'woocommerce_checkout_update_order_review', array( $this, 'sync_posted_locker' ) );
 
         add_shortcode( 'boxnow_map_iframe', array( $this, 'shortcode_iframe' ) );
         // Alias for content written against the official plugin.
@@ -109,6 +128,69 @@ class WC_BoxNow_Locker {
     }
 
     /**
+     * Keep the customer's rate when another rate appears or disappears.
+     *
+     * WooCommerce resets the chosen rate to its default (the first rate on
+     * the classic checkout) whenever the list of offered rates changes, even
+     * when the chosen rate is still offered (wc_shipping_methods_have_changed()).
+     * Another carrier that withdraws a pickup rate while cash on delivery is
+     * selected, for example, would then silently move a BOX NOW customer to
+     * the first rate, or move a customer on another carrier to BOX NOW when
+     * BOX NOW is listed first. The order is created from that session value.
+     *
+     * Only steps in when the chosen rate or WooCommerce's default is BOX NOW
+     * and the chosen rate is still offered; everything else (a first visit, a
+     * withdrawn rate, local pickup, changes between two other carriers) stays
+     * with WooCommerce and the other carriers' own filters. A free-shipping
+     * coupon still moves the customer to free shipping, as WooCommerce does.
+     *
+     * @param string       $default Rate id WooCommerce picked.
+     * @param array        $rates   Rates offered for the package, keyed by rate id.
+     * @param string|false $chosen  Rate id chosen before the recalculation, or false.
+     * @return string
+     */
+    public static function keep_chosen_rate( $default, $rates = array(), $chosen = false ) {
+        $default = (string) $default;
+
+        if ( ! is_string( $chosen ) || '' === $chosen || '' === $default || $chosen === $default ) {
+            return $default;
+        }
+
+        if ( ! is_array( $rates ) || ! isset( $rates[ $chosen ] ) ) {
+            return $default;
+        }
+
+        if ( ! self::methods_include_boxnow( array( $chosen, $default ) ) ) {
+            return $default;
+        }
+
+        if ( 0 === stripos( $default, 'free_shipping' ) && self::cart_has_free_shipping_coupon() ) {
+            return $default;
+        }
+
+        return $chosen;
+    }
+
+    /**
+     * Does a coupon in the cart grant free shipping?
+     *
+     * @return bool
+     */
+    private static function cart_has_free_shipping_coupon() {
+        if ( ! function_exists( 'WC' ) || ! isset( WC()->cart ) || ! is_callable( array( WC()->cart, 'get_coupons' ) ) ) {
+            return false;
+        }
+
+        foreach ( (array) WC()->cart->get_coupons() as $coupon ) {
+            if ( is_callable( array( $coupon, 'get_free_shipping' ) ) && $coupon->get_free_shipping() ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Did this order ship via BOX NOW?
      *
      * @param WC_Order $order Order.
@@ -121,6 +203,101 @@ class WC_BoxNow_Locker {
             }
         }
         return false;
+    }
+
+    /**
+     * Was this order moved off BOX NOW after checkout?
+     *
+     * True when the order has at least one shipping line and none of them is
+     * BOX NOW Delivery: an operator changed the method to another carrier
+     * (or a plain rate) on the order screen. An order with no shipping line
+     * at all is deliberately NOT treated as moved, so a removed line keeps
+     * the previous behaviour. Tracking (poller and webhook alike) and the
+     * tracking email use this one rule.
+     *
+     * @param WC_Order $order Order.
+     * @return bool
+     */
+    public static function order_moved_off_boxnow( $order ) {
+        $methods = $order->get_shipping_methods();
+        return ! empty( $methods ) && ! self::order_has_boxnow( $order );
+    }
+
+    /**
+     * Shipping method ids on this order that are not BOX NOW.
+     *
+     * Non-empty means the order ships with more than one carrier, so a BOX
+     * NOW voucher, which declares the whole order and collects its whole cash
+     * on delivery, must not be created automatically. A line with an empty
+     * method id (WooCommerce admin's "N/A" line) is not a carrier and is
+     * ignored. order_has_boxnow() is deliberately left as it is: it gates
+     * manual creation, the metabox and tracking.
+     *
+     * @param WC_Order $order Order.
+     * @return string[] Unique method ids, in line order.
+     */
+    public static function foreign_shipping_lines( $order ) {
+        $foreign = array();
+
+        foreach ( $order->get_shipping_methods() as $item ) {
+            $method_id = (string) $item->get_method_id();
+
+            if ( '' === $method_id || self::SHIPPING_METHOD_ID === $method_id ) {
+                continue;
+            }
+
+            if ( ! in_array( $method_id, $foreign, true ) ) {
+                $foreign[] = $method_id;
+            }
+        }
+
+        return $foreign;
+    }
+
+    /**
+     * Remove an ACS Point left over on an order that now ships with BOX NOW.
+     *
+     * A failed payment on an ACS Points order that the customer then places
+     * with BOX NOW resumes the same order, and staff may switch an ACS Points
+     * line to BOX NOW on the order screen. Either way the _acs_point_* meta
+     * stays, and WC ACS Courier prints that point in the order emails and on
+     * the customer's account page, although the parcel goes to a BOX NOW
+     * locker. The point is kept while the order still has an acs_points line
+     * (a split order) or an ACS voucher, and on any order without BOX NOW.
+     *
+     * @param WC_Order $order Order. The caller saves it.
+     * @return string The removed point ("name, address", or its id when it
+     *                has neither), or '' when nothing was removed.
+     */
+    public static function clear_acs_point_meta( $order ) {
+        if ( ! self::order_has_boxnow( $order ) || '' !== trim( (string) $order->get_meta( '_acs_voucher_no' ) ) ) {
+            return '';
+        }
+
+        foreach ( $order->get_shipping_methods() as $item ) {
+            if ( 'acs_points' === $item->get_method_id() ) {
+                return '';
+            }
+        }
+
+        $parts = array();
+        foreach ( array( '_acs_point_name', '_acs_point_address' ) as $key ) {
+            $part = trim( (string) $order->get_meta( $key ) );
+            if ( '' !== $part ) {
+                $parts[] = $part;
+            }
+        }
+        $summary = empty( $parts ) ? trim( (string) $order->get_meta( '_acs_point_id' ) ) : implode( ', ', $parts );
+
+        $removed = false;
+        foreach ( self::ACS_POINT_META_KEYS as $key ) {
+            if ( '' !== (string) $order->get_meta( $key ) ) {
+                $order->delete_meta_data( $key );
+                $removed = true;
+            }
+        }
+
+        return $removed ? $summary : '';
     }
 
     /**
@@ -184,11 +361,23 @@ class WC_BoxNow_Locker {
      * Store API's select-shipping-rate call both keep current. Without a
      * session (admin screens, CLI) the list is left alone.
      *
+     * On the pay-for-order page the order being paid decides instead: the
+     * cart session there may be empty or on another carrier. Only 'cod' is
+     * ever removed, never added, so another plugin's own restriction stands.
+     *
      * @param array $gateways Gateway id => WC_Payment_Gateway.
      * @return array
      */
     public static function filter_payment_gateways( $gateways ) {
         if ( ! self::cod_disabled() || ! is_array( $gateways ) || ! isset( $gateways['cod'] ) ) {
+            return $gateways;
+        }
+
+        $paying = self::order_being_paid();
+        if ( false !== $paying ) {
+            if ( $paying && self::order_has_boxnow( $paying ) ) {
+                unset( $gateways['cod'] );
+            }
             return $gateways;
         }
 
@@ -206,6 +395,62 @@ class WC_BoxNow_Locker {
     }
 
     /**
+     * The order being paid on the pay-for-order page.
+     *
+     * Same source as WooCommerce's own cash-on-delivery gateway
+     * (WC_Gateway_COD::is_available()).
+     *
+     * @return WC_Order|null|false The order on the order-pay endpoint, null
+     *                             there when it cannot be loaded, false anywhere else.
+     */
+    public static function order_being_paid() {
+        if ( ! function_exists( 'is_wc_endpoint_url' ) || ! is_wc_endpoint_url( 'order-pay' ) ) {
+            return false;
+        }
+
+        $order = wc_get_order( absint( get_query_var( 'order-pay' ) ) );
+
+        return ( $order && is_callable( array( $order, 'get_shipping_methods' ) ) ) ? $order : null;
+    }
+
+    /**
+     * Did WooCommerce replace a posted rate with another one, BOX NOW on either side?
+     *
+     * WC_Checkout::update_session() stores the posted rates and recalculates
+     * the cart, which resets a rate to WooCommerce's default when the offered
+     * rates changed (a zone change, a withdrawn rate, a free-shipping coupon).
+     * The order is then created from that session value, not from the rate the
+     * customer saw. Only indexes present on both sides are compared, and only
+     * rates that were actually posted.
+     *
+     * @param array $data Posted checkout data.
+     * @return bool
+     */
+    public static function posted_rate_was_replaced( $data ) {
+        if ( empty( $data['shipping_method'] ) || ! is_array( $data['shipping_method'] ) ) {
+            return false;
+        }
+
+        if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+            return false;
+        }
+
+        $session = (array) WC()->session->get( 'chosen_shipping_methods', array() );
+
+        foreach ( $data['shipping_method'] as $i => $posted ) {
+            if ( ! is_string( $posted ) || ! isset( $session[ $i ] ) || ! is_string( $session[ $i ] ) ) {
+                continue;
+            }
+
+            if ( $posted !== $session[ $i ] && self::methods_include_boxnow( array( $posted, $session[ $i ] ) ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Classic checkout validation hook.
      *
      * @param array    $data   Posted data.
@@ -213,6 +458,23 @@ class WC_BoxNow_Locker {
      */
     public function validate_classic_checkout( $data, $errors ) {
         $data = (array) $data;
+
+        // Fail closed when the rate on screen is not the one the order would
+        // get. refresh_totals makes checkout.js refresh the checkout, which
+        // shows the rate now in effect; placing the order again then goes
+        // through. One message is enough: the next submit runs every check.
+        // Geniki Taxydromiki 1.0.1 makes the same check with the same words;
+        // when its message is already there, do not show it twice.
+        if ( self::posted_rate_was_replaced( $data ) ) {
+            WC()->session->set( 'refresh_totals', true );
+            if ( ! in_array( 'geniki_shipping_method_changed', $errors->get_error_codes(), true ) ) {
+                $errors->add(
+                    'boxnow_shipping_method_changed',
+                    __( 'Your shipping method was updated. Please review your order and place it again.', 'wc-boxnow-delivery' )
+                );
+            }
+            return;
+        }
 
         // WC_Checkout::get_posted_data() sets shipping_method to '' when the
         // field was not posted. By the time this hook fires, update_session()
@@ -319,6 +581,9 @@ class WC_BoxNow_Locker {
         if ( '' !== $warehouse ) {
             $order->update_meta_data( '_selected_warehouse', $warehouse );
         }
+
+        // Last, after the locker check above could still throw.
+        self::clear_acs_point_meta( $order );
     }
 
     /**
@@ -345,6 +610,51 @@ class WC_BoxNow_Locker {
         }
 
         wp_send_json_success( array( 'locker_id' => $locker_id ) );
+    }
+
+    /**
+     * Store the locker posted with a checkout refresh in the session.
+     *
+     * Runs on woocommerce_checkout_update_order_review, before WooCommerce
+     * renders the rates again (and with them render_picker()). A pick fills
+     * the picker's hidden fields at once, while wc_boxnow_set_locker stores it
+     * in parallel. A refresh that started before that request ended (another
+     * plugin refreshing on a payment method click, for example) loaded the
+     * old session and writes it back when it ends, which would bring the old
+     * locker back on screen and onto the order. Taking the posted field here
+     * repairs that on every refresh. An absent, empty or malformed field
+     * writes nothing, so a refresh never clears a chosen locker.
+     *
+     * @param string $post_data The checkout form, URL-encoded.
+     */
+    public function sync_posted_locker( $post_data ) {
+        if ( ! is_string( $post_data ) || '' === $post_data ) {
+            return;
+        }
+
+        if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+            return;
+        }
+
+        $fields = array();
+        parse_str( $post_data, $fields );
+
+        if ( ! isset( $fields['boxnow_locker_id'] ) || ! is_string( $fields['boxnow_locker_id'] ) ) {
+            return;
+        }
+
+        $locker_id = sanitize_text_field( $fields['boxnow_locker_id'] );
+
+        if ( '' === $locker_id ) {
+            return;
+        }
+
+        $locker_name = isset( $fields['boxnow_locker_name'] ) && is_string( $fields['boxnow_locker_name'] )
+            ? sanitize_text_field( $fields['boxnow_locker_name'] )
+            : '';
+
+        WC()->session->set( self::SESSION_KEY, $locker_id );
+        WC()->session->set( self::SESSION_KEY_NAME, $locker_name );
     }
 
     /**
@@ -626,6 +936,10 @@ class WC_BoxNow_Locker {
         if ( '' !== $warehouse ) {
             $order->update_meta_data( '_selected_warehouse', $warehouse );
         }
+
+        // Last, after every check above that could still throw: the Store
+        // API saves the order even when this callback throws.
+        self::clear_acs_point_meta( $order );
     }
 
     /**

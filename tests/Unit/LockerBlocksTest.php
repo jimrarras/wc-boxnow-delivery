@@ -100,6 +100,86 @@ class LockerBlocksTest extends TestCase {
         $this->assertSame( array(), $order->updated_meta, 'No partial write should occur when the locker is missing.' );
     }
 
+    private function acsPointOrder( array $method_ids, array $meta = array() ) {
+        $items = array();
+        foreach ( $method_ids as $method_id ) {
+            $item = \Mockery::mock( 'WC_Order_Item_Shipping' );
+            $item->shouldReceive( 'get_method_id' )->andReturn( $method_id );
+            $items[] = $item;
+        }
+
+        return $this->createOrderMock( array(
+            'shipping_methods' => $items,
+            'meta'             => $meta + array(
+                '_acs_point_id'      => 'acs1',
+                '_acs_point_type'    => 'locker',
+                '_acs_point_name'    => 'ACS Smart Point Kifisia',
+                '_acs_point_address' => 'Kifisias 10, 14562 Kifisia',
+                '_acs_point_station' => 'KI',
+                '_acs_point_branch'  => '5',
+                '_acs_point_cod'     => '0',
+            ),
+        ) );
+    }
+
+    public function test_store_api_checkout_drops_a_leftover_acs_point_from_a_boxnow_order() {
+        // The Store API reuses the draft order of an earlier ACS Points
+        // attempt and leaves its meta in place.
+        $this->stubGetOption( array() );
+        $order = $this->acsPointOrder( array( 'box_now_delivery' ) );
+
+        \WC_BoxNow_Locker::instance()->save_from_store_api(
+            $order,
+            array( 'extensions' => array( 'wc-boxnow-delivery' => array( 'locker_id' => 'APM-9' ) ) )
+        );
+
+        $this->assertSame( 'APM-9', $order->updated_meta['_boxnow_locker_id'] );
+        $this->assertEqualsCanonicalizing( \WC_BoxNow_Locker::ACS_POINT_META_KEYS, $order->deleted_meta );
+    }
+
+    public function test_store_api_checkout_keeps_the_acs_point_while_acs_owns_it() {
+        $this->stubGetOption( array() );
+        $request = array( 'extensions' => array( 'wc-boxnow-delivery' => array( 'locker_id' => 'APM-9' ) ) );
+
+        foreach ( array(
+            'acs_points order'      => $this->acsPointOrder( array( 'acs_points' ) ),
+            'split with acs_points' => $this->acsPointOrder( array( 'box_now_delivery', 'acs_points' ) ),
+            'acs voucher exists'    => $this->acsPointOrder( array( 'box_now_delivery' ), array( '_acs_voucher_no' => '7001' ) ),
+        ) as $label => $order ) {
+            \WC_BoxNow_Locker::instance()->save_from_store_api( $order, $request );
+            $this->assertSame( array(), $order->deleted_meta, $label );
+        }
+    }
+
+    /**
+     * @dataProvider storeApiRefusals
+     */
+    public function test_store_api_checkout_throws_before_touching_the_acs_point( array $options, $payment_method, array $request ) {
+        // The Store API saves the order even when this callback throws, so a
+        // refusal must leave the ACS Point where it was.
+        $this->stubGetOption( $options );
+
+        $order = $this->createOrderMock( array(
+            'payment_method'   => $payment_method,
+            'shipping_methods' => $this->acsPointOrder( array( 'box_now_delivery' ) )->get_shipping_methods(),
+            'meta'             => array( '_acs_point_id' => 'acs1', '_acs_point_name' => 'ACS Smart Point Kifisia' ),
+        ) );
+
+        try {
+            \WC_BoxNow_Locker::instance()->save_from_store_api( $order, $request );
+            $this->fail( 'Expected a refusal.' );
+        } catch ( \Exception $e ) {
+            $this->assertSame( array(), $order->deleted_meta );
+        }
+    }
+
+    public function storeApiRefusals() {
+        return array(
+            'no locker'        => array( array(), 'bacs', array() ),
+            'cod switched off' => array( array( 'wc_boxnow_disable_cod' => 'yes' ), 'cod', array( 'extensions' => array( 'wc-boxnow-delivery' => array( 'locker_id' => 'APM-9' ) ) ) ),
+        );
+    }
+
     public function test_save_from_store_api_is_a_no_op_for_another_carrier() {
         $shipping_item = \Mockery::mock( 'WC_Order_Item_Shipping' );
         $shipping_item->shouldReceive( 'get_method_id' )->andReturn( 'flat_rate' );

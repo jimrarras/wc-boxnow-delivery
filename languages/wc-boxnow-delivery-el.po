@@ -2,7 +2,7 @@
 # Covers what customers see: the phone locker picker and the checkout error messages.
 msgid ""
 msgstr ""
-"Project-Id-Version: wc-boxnow-delivery 1.0.5\n"
+"Project-Id-Version: wc-boxnow-delivery 1.0.6\n"
 "Language: el\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -29,6 +29,10 @@ msgstr "Επιλέξτε ένα BOX NOW locker πριν ολοκληρώσετε
 #: includes/class-boxnow-locker.php
 msgid "Cash on delivery is not available for BOX NOW locker delivery. Please choose another payment method."
 msgstr "Η αντικαταβολή δεν είναι διαθέσιμη για παράδοση σε BOX NOW locker. Επιλέξτε άλλον τρόπο πληρωμής."
+
+#: includes/class-boxnow-locker.php
+msgid "Your shipping method was updated. Please review your order and place it again."
+msgstr "Η μέθοδος αποστολής ενημερώθηκε. Ελέγξτε την παραγγελία σας και ολοκληρώστε την ξανά."
 
 #: includes/class-boxnow-locker.php
 msgid "Please select a locker first!"

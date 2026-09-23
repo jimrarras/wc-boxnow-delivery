@@ -8,7 +8,8 @@ Issues 1 to 4 have since been RESOLVED and are kept below for the record. Issue
 5 was decided item by item on 2026-09-05: two of its three features are built,
 the third will not be. Issue 6 remains open until the plugin is exercised on a
 live store, which is also where the embedded display mode and the Blocks picker
-get their first real run.
+get their first real run. Issue 8 covers running next to ACS Courier and Geniki
+Taxydromiki: fixed in 1.0.6, with the residuals listed there.
 
 Nothing here is a regression against BOX NOW's official plugin.
 
@@ -180,7 +181,8 @@ confined to a postcode-gated test zone. Verified there: `woocommerce_after_shipp
 fires under the store's overridden shipping template, the picker renders beneath
 the rate, the button opens the overlay and the hosted widget renders inside it,
 the classic validation and save paths work, ACS and BOX NOW automation coexist
-(ACS skips BOX NOW orders), a staging parcel and its label were created and the
+(ACS's automatic vouchers skip BOX NOW orders; its bulk action did not until
+1.0.6, see issue 8), a staging parcel and its label were created and the
 parcel cancelled. Found and fixed from the widget's own source
 (`functions/markerClicked.js`, `functions/setupSidebar.js`): the selection
 message is a FLAT object `{ boxnowLockerId, boxnowLockerName,
@@ -260,3 +262,115 @@ Sixteen minor findings were triaged as ship-as-is during the whole-branch
 review. They are not repeated here; the reasoning is in the review record. The
 one minor that was fixed was removing the dead `WC_BOXNOW_DIMENSIONS_UNIT`
 constant.
+
+---
+
+## 8. Running next to ACS Courier and Geniki Taxydromiki (1.0.6)
+
+**Status: the BOX NOW side of a three-plugin audit (ACS Courier 1.3.1, Geniki
+Taxydromiki 1.0.0, BOX NOW 1.0.5) is fixed in 1.0.6. The residuals below stay
+open. None of it has run on the live store yet: the checks are in section 11 of
+`docs/testing-checklist-ui.md` and section 13 of
+`docs/testing-checklist-integration.md`.**
+
+Fixed in 1.0.6, described in the README section "Running next to ACS Courier and
+Geniki Taxydromiki":
+
+- ACS Courier's bulk "ACS: Create Vouchers" booked ACS vouchers on BOX NOW
+  orders. BOX NOW now removes its orders from that selection, on the HPOS and
+  the legacy screen, and ACS automation is vetoed on an order that still has
+  live BOX NOW parcels after its line was changed. A parcel BOX NOW tracking
+  reports returned, lost or cancelled no longer counts, so an ACS reship goes
+  through. When BOX NOW leaves ACS no order at all, ACS's result args from an
+  earlier run are removed from that redirect.
+- BOX NOW automation and bulk booked parcels on orders that already had another
+  carrier's voucher, or that also shipped with another carrier. A voucher that
+  carrier's tracking reports back at the store (ACS `denied`, Geniki `returned`
+  or `cancelled`) does not count, so a BOX NOW reship goes through.
+- ACS Courier's Create Voucher asked only the question of whichever carrier
+  plugin's guard ran first; it now asks one question that carries every
+  carrier's text for the order.
+- An order moved off BOX NOW lost its Print and Cancel controls, and tracking
+  then moved it to a BOX NOW status that ACS Courier's tracking never follows.
+- The webhook moved cancelled, refunded and failed orders, and orders ACS or
+  Geniki had settled, to a BOX NOW status.
+- Checkout: the chosen rate reset when another carrier's rate came or went, a
+  locker pick could be lost to Geniki's refresh on a payment method click, and
+  ACS Point meta stayed on orders that ship with BOX NOW.
+- Pay-for-order COD followed the cart, BOX NOW's bulk action carried the other
+  carriers' result notices (and its own) into its redirect, and the pickers
+  could stack.
+- A cancelled parcel stored under the upstream single-id key
+  `_boxnow_parcel_id` came back in the BOX NOW box and kept counting as a
+  BOX NOW parcel.
+
+Still open:
+
+- **Release together with Geniki Taxydromiki 1.0.1.** Each plugin keeps only its
+  own orders out of ACS's bulk action.
+- **Orders affected before 1.0.6 are not cleaned up.** Look for orders with
+  `_acs_voucher_no` next to `_boxnow_parcel_ids` or a `box_now_delivery` line,
+  and delete the unwanted ACS voucher from the ACS box, which also clears ACS's
+  tracking meta. Tell ACS if a pickup list was already issued. Orders the
+  webhook moved to a BOX NOW status before 1.0.6 keep that status.
+- **Split orders and cash on delivery.** Automation and bulk skip a BOX NOW order
+  that also ships with another carrier, but a voucher created by hand still
+  declares the whole order and, for cash on delivery, collects the whole order
+  total. A cash-to-collect input on the order screen is not built.
+- **A BOX NOW line kept next to another carrier's shipment.** An order that keeps
+  its BOX NOW line and a live parcel while another carrier ships it and settles
+  it to Completed is still tracked by BOX NOW, which can move it to a BOX NOW
+  status. When another carrier takes over, cancel the BOX NOW parcel or change
+  the shipping line.
+- **Free-shipping minimum.** BOX NOW keeps the chosen rate while it is offered,
+  so a BOX NOW customer (chosen, or preselected as the first rate) who crosses a
+  free-shipping minimum stays on the paid BOX NOW rate; free shipping is listed
+  and the customer must pick it. To make BOX NOW free at the same amount, set the
+  BOX NOW method's free delivery threshold, which only changes the cost of the
+  same rate.
+- **Delivered or untracked BOX NOW parcels keep ACS off.** The ACS veto, the ACS
+  bulk exclusion and the ACS button's question count a parcel as live until it
+  is cancelled or tracking reports it returned, lost or cancelled. A delivered
+  parcel, and one tracking has no status for (tracking off, or a second BOX NOW
+  batch booked after the order settled, which is never polled), keeps them on.
+  Use Create Voucher in the ACS box for such an order.
+- **ACS Courier's bulk result notices.** ACS Courier shows its notices whenever
+  their query arg is in the orders list URL, and WooCommerce builds every bulk
+  redirect from that URL. So "N ACS vouchers created." shows again after a
+  WooCommerce status or trash bulk action, after ACS's next bulk action (Print
+  after Create), and after a third-party plugin's bulk action. Only BOX NOW's and
+  Geniki's own bulk actions, and the redirect where they leave ACS's Create
+  Vouchers no order at all, remove those args. Closing it needs ACS Courier:
+  drop its args at the top of its bulk handler for every action, and gate its
+  created, error and no-vouchers notices on a per-user transient, as its printed
+  notice already is.
+- **Free-shipping coupon with ACS "exclusive".** With a free-shipping coupon in
+  the cart and ACS Point in "exclusive" mode, a payment method click can still
+  move a BOX NOW customer to free shipping, following WooCommerce's coupon rule.
+  The classic checkout's changed-rate check catches it when it happens silently
+  between the last refresh and Place order.
+- **A later `woocommerce_shipping_chosen_method` callback still wins.** BOX NOW
+  keeps the chosen rate at priority 20; a third-party callback above that can
+  still change it, and the classic checkout then refuses the order once.
+- **Two "shipping method was updated" messages.** When a swap has BOX NOW on one
+  side and Geniki on the other, both plugins can refuse the order, each with its
+  own near-identical message.
+- **No inert background.** With the BOX NOW popup open, a keyboard user can
+  still Tab to another carrier's opener behind it. ACS does not refuse to open,
+  so its map can stack on top: Back then closes only the ACS map, but one Escape
+  closes both.
+- **Blocks picker.** `boxnow-locker-blocks.js` has no popstate own-marker check.
+  ACS and Geniki render no pickers on the Blocks checkout, so nothing stacks
+  there today.
+- **ACS's COD rule on the pay-for-order page.** ACS Courier still decides from
+  the cart there, so a cart holding an ACS Point that does not take cash on
+  delivery also hides it on a BOX NOW or Geniki order's pay page.
+- **Confirmations run in the browser.** The questions before ACS's and BOX NOW's
+  Create Voucher are browser dialogs; the server refuses nothing, because those
+  buttons are the deliberate override.
+- **Reships.** ACS's and BOX NOW's tracking only follow processing, on-hold and
+  completed, so a reship after a failure status is tracked once the order is
+  moved back to Processing (README). BOX NOW never tracks a second BOX NOW batch
+  on an order it already settled, because `_boxnow_tracking_final` stays. An ACS
+  reship with the line changed to ACS Courier gets ACS's automatic voucher only
+  once tracking has recorded the BOX NOW parcel as returned, lost or cancelled.

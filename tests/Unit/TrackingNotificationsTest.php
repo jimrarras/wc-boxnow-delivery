@@ -273,4 +273,54 @@ class TrackingNotificationsTest extends TestCase {
         $this->assertSame( 'boxnow-delivered', $target->status_set );
         $this->assertTrue( $response->data['ok'] );
     }
+
+    // ── An order moved to another carrier ────────────────────────────
+
+    private function movedOrder( $method ) {
+        $item = \Mockery::mock( 'WC_Order_Item_Shipping' );
+        $item->shouldReceive( 'get_method_id' )->andReturn( $method );
+
+        return $this->createOrderMock( array(
+            'shipping_methods' => array( $item ),
+            'meta'             => array( '_boxnow_parcel_ids' => array( '9001' ), '_boxnow_vouchers_created' => 1 ),
+        ) );
+    }
+
+    public function test_webhook_for_a_moved_order_records_the_status_without_transitioning() {
+        $order = $this->movedOrder( 'geniki_courier' );
+        Functions\when( 'wc_get_orders' )->justReturn( array( $order ) );
+
+        $response = \WC_BoxNow_Tracking::handle_webhook(
+            $this->webhookRequest( array( 'data' => array( 'parcelId' => '9001', 'state' => 'delivered' ) ) )
+        );
+
+        $this->assertTrue( $response->data['ok'] );
+        $this->assertNull( $order->status_set );
+        $this->assertSame( 'delivered', $order->updated_meta['_boxnow_tracking_status'] );
+    }
+
+    public function test_tracking_block_is_skipped_for_an_order_that_no_longer_ships_with_boxnow() {
+        $this->stubGetOption( array( 'wc_boxnow_email_tracking' => 'yes' ) );
+
+        ob_start();
+        \WC_BoxNow_Tracking::append_tracking_to_email( $this->movedOrder( 'geniki_courier' ), false, false, null );
+        $html = ob_get_clean();
+
+        ob_start();
+        \WC_BoxNow_Tracking::append_tracking_to_email( $this->movedOrder( 'acs_courier' ), false, true, null );
+        $plain = ob_get_clean();
+
+        $this->assertSame( '', $html );
+        $this->assertSame( '', $plain );
+    }
+
+    public function test_tracking_block_is_still_appended_for_an_order_without_a_shipping_line() {
+        $this->stubGetOption( array( 'wc_boxnow_email_tracking' => 'yes' ) );
+        $order = $this->createOrderMock( array( 'meta' => array( '_boxnow_parcel_ids' => array( 'P1' ) ) ) );
+
+        ob_start();
+        \WC_BoxNow_Tracking::append_tracking_to_email( $order, false, false, null );
+
+        $this->assertStringContainsString( 'P1', ob_get_clean() );
+    }
 }

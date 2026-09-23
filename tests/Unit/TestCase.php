@@ -58,6 +58,11 @@ abstract class TestCase extends PHPUnitTestCase {
         // tests that need a session stub WC() again with one.
         Functions\when( 'WC' )->justReturn( (object) array( 'session' => null ) );
 
+        // Same again for is_wc_endpoint_url(): default to "not the order-pay
+        // endpoint", so the pay-for-order branch of the COD filter stays off
+        // unless a test asks for it.
+        Functions\when( 'is_wc_endpoint_url' )->justReturn( false );
+
         Functions\when( 'add_shortcode' )->justReturn( true );
         Functions\when( 'get_bloginfo' )->justReturn( 'Test Shop' );
         Functions\when( 'current_time' )->alias( function ( $type, $gmt = 0 ) {
@@ -172,10 +177,14 @@ abstract class TestCase extends PHPUnitTestCase {
         // get_meta() call on the same instance before save() is ever reached.
         // This is what lets a test call a method more than once on the same
         // mock (e.g. apply_status() across a sequence of parcels) and see
-        // each call build on the last.
+        // each call build on the last. A delete_meta_data() call likewise
+        // hides the fixture value, and is recorded in $order->deleted_meta.
         $order->shouldReceive( 'get_meta' )->andReturnUsing( function ( $key, $single = true ) use ( $cfg, $order ) {
             if ( array_key_exists( $key, $order->updated_meta ) ) {
                 return $order->updated_meta[ $key ];
+            }
+            if ( in_array( $key, $order->deleted_meta, true ) ) {
+                return '';
             }
             return array_key_exists( $key, $cfg['meta'] ) ? $cfg['meta'][ $key ] : '';
         } );
@@ -183,13 +192,17 @@ abstract class TestCase extends PHPUnitTestCase {
         $order->shouldReceive( 'get_items' )->andReturn( $cfg['items'] );
 
         $order->updated_meta = array();
+        $order->deleted_meta = array();
         $order->notes        = array();
         $order->status_set   = null;
 
         $order->shouldReceive( 'update_meta_data' )->andReturnUsing( function ( $key, $value ) use ( $order ) {
             $order->updated_meta[ $key ] = $value;
         } );
-        $order->shouldReceive( 'delete_meta_data' )->andReturnNull();
+        $order->shouldReceive( 'delete_meta_data' )->andReturnUsing( function ( $key ) use ( $order ) {
+            unset( $order->updated_meta[ $key ] );
+            $order->deleted_meta[] = $key;
+        } );
         $order->shouldReceive( 'add_order_note' )->andReturnUsing( function ( $note ) use ( $order ) {
             $order->notes[] = $note;
         } );

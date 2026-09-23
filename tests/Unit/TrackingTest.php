@@ -438,4 +438,162 @@ class TrackingTest extends TestCase {
         $this->assertSame( $order, $seen['args'][0] );
         $this->assertSame( 'boxnow-returned', $order->status_set, 'Returning the value unchanged must keep the default behaviour.' );
     }
+
+    // ── An order moved to another carrier after its parcel was booked ────
+    //
+    // BOX NOW's outcome is recorded and the final marker stops the polling,
+    // but the order status belongs to the carrier that now ships the order.
+    // An order with no shipping line at all (every fixture above) keeps the
+    // old behaviour.
+
+    private function movedOrder( $method, array $meta = array() ) {
+        $item = \Mockery::mock( 'WC_Order_Item_Shipping' );
+        $item->shouldReceive( 'get_method_id' )->andReturn( $method );
+
+        return $this->createOrderMock( array(
+            'shipping_methods' => array( $item ),
+            'meta'             => array_merge(
+                array( '_boxnow_locker_id' => 'LOC-1', '_boxnow_parcel_ids' => array( '9001' ), '_boxnow_vouchers_created' => 1 ),
+                $meta
+            ),
+        ) );
+    }
+
+    public function movedOutcomes() {
+        return array(
+            'delivered'      => array( 'delivered', 'delivered', 'Delivered (BOX NOW)' ),
+            'expired-return' => array( 'expired-return', 'returned', 'Returned (BOX NOW)' ),
+            'canceled'       => array( 'canceled', 'attention', 'Needs Attention (BOX NOW)' ),
+            'lost'           => array( 'lost', 'attention', 'Needs Attention (BOX NOW)' ),
+        );
+    }
+
+    /**
+     * @dataProvider movedOutcomes
+     */
+    public function test_apply_status_does_not_change_the_status_of_an_order_moved_to_another_carrier( $status, $final, $label ) {
+        $order = $this->movedOrder( 'acs_courier', array( '_acs_voucher_no' => '7400000001' ) );
+
+        $this->assertFalse( \WC_BoxNow_Tracking::apply_status( $order, $status, '9001' ) );
+        $this->assertNull( $order->status_set );
+        $this->assertSame( $final, $order->updated_meta['_boxnow_tracking_final'], 'The final marker stops the polling.' );
+        $last = end( $order->notes );
+        $this->assertStringContainsString( 'left unchanged', $last );
+        $this->assertStringContainsString( $label, $last );
+        foreach ( $order->notes as $note ) {
+            $this->assertStringNotContainsString( 'needs manual attention', $note, 'The order is not BOX NOW\'s to flag.' );
+        }
+    }
+
+    public function test_apply_status_leaves_a_moved_order_alone_while_the_parcel_is_still_moving() {
+        $order = $this->movedOrder( 'geniki_courier' );
+
+        $this->assertFalse( \WC_BoxNow_Tracking::apply_status( $order, 'in-transit', '9001' ) );
+        $this->assertNull( $order->status_set );
+        $this->assertArrayNotHasKey( '_boxnow_tracking_final', $order->updated_meta, 'Still polled until the parcel settles.' );
+        $this->assertSame( 'in-transit', $order->updated_meta['_boxnow_tracking_status'] );
+    }
+
+    public function test_a_multi_parcel_order_moved_to_another_carrier_settles_without_a_status_change() {
+        $order = $this->movedOrder( 'geniki_courier', array( '_boxnow_parcel_ids' => array( 'P1', 'P2' ) ) );
+
+        \WC_BoxNow_Tracking::apply_status( $order, 'delivered', 'P1' );
+        $this->assertArrayNotHasKey( '_boxnow_tracking_final', $order->updated_meta );
+
+        $this->assertFalse( \WC_BoxNow_Tracking::apply_status( $order, 'returned', 'P2' ) );
+        $this->assertNull( $order->status_set );
+        $this->assertSame( 'returned', $order->updated_meta['_boxnow_tracking_final'] );
+    }
+
+    public function test_the_settle_filter_restores_the_status_change_for_a_moved_order() {
+        // A store that swaps the line only to waive the fee, while the parcel
+        // still goes by BOX NOW.
+        $seen = null;
+        Functions\when( 'apply_filters' )->alias( function ( $tag, $value, ...$args ) use ( &$seen ) {
+            if ( 'wc_boxnow_settle_order_without_boxnow_line' === $tag ) {
+                $seen = $args;
+                return true;
+            }
+            return $value;
+        } );
+
+        $order = $this->movedOrder( 'free_shipping' );
+
+        $this->assertTrue( \WC_BoxNow_Tracking::apply_status( $order, 'delivered', '9001' ) );
+        $this->assertSame( 'boxnow-delivered', $order->status_set );
+        $this->assertSame( array( $order, 'boxnow-delivered' ), $seen );
+    }
+
+    public function test_the_settle_filter_is_not_asked_for_an_order_that_still_ships_with_boxnow() {
+        $asked = false;
+        Functions\when( 'apply_filters' )->alias( function ( $tag, $value, ...$args ) use ( &$asked ) {
+            if ( 'wc_boxnow_settle_order_without_boxnow_line' === $tag ) {
+                $asked = true;
+            }
+            return $value;
+        } );
+
+        $order = $this->movedOrder( 'box_now_delivery' );
+
+        $this->assertTrue( \WC_BoxNow_Tracking::apply_status( $order, 'delivered', '9001' ) );
+        $this->assertSame( 'boxnow-delivered', $order->status_set );
+        $this->assertFalse( $asked );
+    }
+
+    public function test_an_order_without_any_shipping_line_keeps_the_old_behaviour() {
+        $order = $this->createOrderMock( array( 'meta' => array( '_boxnow_parcel_ids' => array( '9001' ) ) ) );
+
+        $this->assertTrue( \WC_BoxNow_Tracking::apply_status( $order, 'delivered', '9001' ) );
+        $this->assertSame( 'boxnow-delivered', $order->status_set );
+    }
+
+    public function test_run_cron_settles_the_boxnow_side_of_a_moved_order_without_a_status_change() {
+        $order = $this->movedOrder( 'flat_rate' );
+
+        Functions\when( 'wc_get_orders' )->justReturn( array( $order ) );
+        Functions\when( 'apply_filters' )->alias( function ( $tag, $value, ...$args ) {
+            if ( 'wc_boxnow_pre_get_parcels' === $tag ) {
+                return array( array( 'id' => '9001', 'status' => 'canceled' ) );
+            }
+            return $value;
+        } );
+
+        \WC_BoxNow_Tracking::run_cron();
+
+        $this->assertNull( $order->status_set );
+        $this->assertSame( 'attention', $order->updated_meta['_boxnow_tracking_final'] );
+    }
+
+    // ── One status rule for the poller and the webhook ──────────────────
+
+    public function test_orders_awaiting_tracking_keeps_its_default_status_list() {
+        $captured_args = null;
+        Functions\when( 'wc_get_orders' )->alias( function ( $args ) use ( &$captured_args ) {
+            $captured_args = $args;
+            return array();
+        } );
+
+        \WC_BoxNow_Tracking::orders_awaiting_tracking();
+
+        $this->assertSame( array( 'processing', 'on-hold', 'completed' ), $captured_args['status'] );
+    }
+
+    public function test_orders_awaiting_tracking_uses_the_tracked_status_filter() {
+        Functions\when( 'apply_filters' )->alias( function ( $tag, $value, ...$args ) {
+            if ( 'wc_boxnow_tracked_order_statuses' === $tag ) {
+                return array_merge( $value, array( 'shipped' ) );
+            }
+            return $value;
+        } );
+
+        $captured_args = null;
+        Functions\when( 'wc_get_orders' )->alias( function ( $args ) use ( &$captured_args ) {
+            $captured_args = $args;
+            return array();
+        } );
+
+        \WC_BoxNow_Tracking::orders_awaiting_tracking();
+
+        $this->assertSame( array( 'processing', 'on-hold', 'completed', 'shipped' ), $captured_args['status'] );
+    }
 }

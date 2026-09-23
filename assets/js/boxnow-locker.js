@@ -20,9 +20,55 @@
     // closing removes that entry again.
     var historyPushed = false;
 
+    // Token of the entry the open picker pushed (see onPopState()).
+    var historyToken = null;
+
     // Full-screen mode: the locker the customer last tapped, waiting for the
     // confirm button. Closing the sheet any other way discards it.
     var pendingLocker = null;
+
+    // The locker the customer picked last on this page. Written back into
+    // the picker after the wc_boxnow_set_locker request, because a checkout
+    // refresh that landed meanwhile may have re-rendered the picker from the
+    // session, which can still hold the previous locker.
+    var picked = null;
+
+    // Other carriers' full-screen pickers on the same checkout (WC ACS
+    // Courier, Geniki Taxydromiki). Ours never opens on top of one: the two
+    // history entries and back-button handlers would close each other.
+    var FOREIGN_MODALS = '.wc-acs-points-overlay, .wc-geniki-points-overlay';
+
+    // The element that opened the picker; focus returns to it on close.
+    var opener = null;
+
+    // data-package of the picker whose button opened the picker. A checkout
+    // refresh replaces that button (it sits in the review-order fragment),
+    // so focus goes to the button now rendered for the same picker.
+    var openerPackage = null;
+
+    // Set by a pick for the refresh it triggers; see restoreFocus().
+    var refocusPackage = null;
+
+    // The element that last received focus (focusin). Removing the focused
+    // button fires no focusin, so after a refresh replaced it this still
+    // holds the old, detached button.
+    var lastFocused = null;
+
+    /**
+     * The "Pick a Locker" button of a picker, as rendered now.
+     *
+     * @param {?string} pkg data-package of the picker.
+     * @return {?Element}
+     */
+    function pickerButton( pkg ) {
+        if ( null === pkg ) {
+            return null;
+        }
+
+        return $( '.wc-boxnow-picker' ).filter( function () {
+            return String( $( this ).attr( 'data-package' ) || '' ) === pkg;
+        } ).find( '.wc-boxnow-open' )[ 0 ] || null;
+    }
 
     /**
      * Phones get the widget's full-page mode in a full-screen sheet.
@@ -56,6 +102,15 @@
         $( '.wc-boxnow-overlay' ).remove();
         $( 'body' ).removeClass( 'wc-boxnow-noscroll' );
         pendingLocker = null;
+
+        if ( opener && document.body.contains( opener ) ) {
+            opener.focus();
+        } else if ( opener && pickerButton( openerPackage ) ) {
+            // A refresh that landed while the picker was open replaced it.
+            pickerButton( openerPackage ).focus();
+        }
+        opener = null;
+        openerPackage = null;
 
         if ( historyPushed ) {
             historyPushed = false;
@@ -101,14 +156,36 @@
         return data.boxnowClose === 'yes' || data === 'closeIframe' || data.type === 'BOXNOW_CLOSE';
     }
 
+    /**
+     * Show the last picked locker in every picker's fields and label.
+     *
+     * render_picker() prints one picker per BOX NOW rate, so a cart split
+     * into several packages has several boxnow_locker_id fields. An #id
+     * selector would reach only the first, and PHP keeps the LAST of a
+     * repeated field, both in sync_posted_locker() and in $_POST at Place
+     * order, so every copy must carry the pick.
+     */
+    function applyPicked() {
+        if ( ! picked ) {
+            return;
+        }
+
+        $( 'input[name="boxnow_locker_id"]' ).val( picked.id );
+        $( 'input[name="boxnow_locker_name"]' ).val( picked.name || '' );
+        $( '.wc-boxnow-selected' ).text( picked.name || picked.id ).prop( 'hidden', false );
+    }
+
     function selectLocker( locker ) {
         if ( ! locker || ! locker.id ) {
             return;
         }
 
-        $( '#boxnow_locker_id' ).val( locker.id );
-        $( '#boxnow_locker_name' ).val( locker.name || '' );
-        $( '.wc-boxnow-selected' ).text( locker.name || locker.id ).prop( 'hidden', false );
+        picked = locker;
+        applyPicked();
+
+        // Read before closePopup() clears it. Embedded mode has no opener,
+        // so focus is not touched there.
+        var refocus = openerPackage;
 
         $.post( settings.ajaxUrl, {
             action: 'wc_boxnow_set_locker',
@@ -116,6 +193,13 @@
             locker_id: locker.id,
             locker_name: locker.name || ''
         } ).always( function () {
+            // A refresh that landed while this request ran may have put the
+            // previous locker back into the picker. Write the pick again, so
+            // the refresh below posts it (the server stores the posted
+            // locker, see WC_BoxNow_Locker::sync_posted_locker()). Reading
+            // `picked` rather than `locker` keeps the latest of two picks.
+            applyPicked();
+            refocusPackage = refocus;
             $( document.body ).trigger( 'update_checkout' );
         } );
 
@@ -141,6 +225,42 @@
             $( '<span></span>' ).text( locker.address || '' )
         );
         foot.prop( 'hidden', false );
+    }
+
+    /**
+     * `updated_checkout`: after the refresh a pick triggered, focus the new
+     * "Pick a Locker" button, but only when that refresh took focus from the
+     * old one (focus fell to <body> and the button was the last element to
+     * hold it). A field the customer moved to meanwhile keeps focus, and a
+     * failed refresh is left to scroll to its notices, as checkout.js does.
+     *
+     * @param {Event}  event
+     * @param {Object} [data] The update_order_review response.
+     */
+    function restoreFocus( event, data ) {
+        // Not WooCommerce's own refresh (another script fired the event).
+        if ( ! data || ! data.result ) {
+            return;
+        }
+
+        var pkg = refocusPackage;
+        refocusPackage = null;
+
+        if ( null === pkg || popup || document.querySelector( FOREIGN_MODALS ) || 'success' !== data.result ) {
+            return;
+        }
+
+        var active = document.activeElement;
+        if ( ( active && active !== document.body ) ||
+            ! lastFocused || document.body.contains( lastFocused ) ||
+            ! $( lastFocused ).is( '.wc-boxnow-open' ) ) {
+            return;
+        }
+
+        var button = pickerButton( pkg );
+        if ( button ) {
+            button.focus();
+        }
     }
 
     function isSheetOpen() {
@@ -258,10 +378,21 @@
         return sheet.append( bar, frame, foot ).appendTo( 'body' );
     }
 
-    function openPopup() {
-        if ( popup ) {
+    /**
+     * @param {Element} [from] The element that opened the picker.
+     */
+    function openPopup( from ) {
+        // A keyboard user can still reach our button behind another
+        // carrier's open picker. Opening on top of it would stack two
+        // dialogs, so the click does nothing until that picker is closed.
+        if ( popup || document.querySelector( FOREIGN_MODALS ) ) {
             return;
         }
+
+        opener = from || document.activeElement;
+        openerPackage = $( opener ).is( '.wc-boxnow-open' )
+            ? String( $( opener ).closest( '.wc-boxnow-picker' ).attr( 'data-package' ) || '' )
+            : null;
 
         if ( isFullScreen() ) {
             popup = buildSheet();
@@ -280,15 +411,33 @@
 
         $( 'body' ).addClass( 'wc-boxnow-noscroll' );
 
+        // The sheet's close button is ours, so focus goes into the dialog.
+        // The desktop popup is the widget's cross-origin iframe: focus inside
+        // it would keep Escape from reaching the page's handler below.
+        if ( isSheetOpen() ) {
+            popup.find( '.wc-boxnow-sheet-close' ).trigger( 'focus' );
+        }
+
         try {
-            window.history.pushState( { wcBoxNow: true }, '' );
+            // Each opening marks its entry with its own token. A constant
+            // would also match an entry left by an earlier opening, which
+            // is current again after a reload or a Forward.
+            historyToken = String( Date.now() ) + Math.random();
+            window.history.pushState( { wcBoxNow: historyToken }, '' );
             historyPushed = true;
         } catch ( e ) {
             historyPushed = false;
         }
     }
 
-    function onPopState() {
+    function onPopState( event ) {
+        // Back landed ON the entry this opening pushed: a later entry
+        // (another picker's, or a page script's) was removed, and our picker
+        // stays open. An entry from an earlier opening does not count.
+        if ( popup && event && event.state && event.state.wcBoxNow === historyToken ) {
+            return;
+        }
+
         if ( popup && historyPushed ) {
             historyPushed = false;
             closePopup();
@@ -359,6 +508,10 @@
         window.addEventListener( 'message', onMessage, false );
         window.addEventListener( 'popstate', onPopState );
 
+        $( document ).on( 'focusin', function ( e ) {
+            lastFocused = e.target;
+        } );
+
         // Only reaches us while focus is on the checkout page; once the
         // customer works inside the widget, its own close button applies.
         $( document ).on( 'keydown', function ( e ) {
@@ -369,11 +522,12 @@
 
         $( document.body ).on( 'click', '.wc-boxnow-open', function ( e ) {
             e.preventDefault();
-            openPopup();
+            openPopup( this );
         } );
 
         ensureEmbedded();
         $( document.body ).on( 'updated_checkout', ensureEmbedded );
+        $( document.body ).on( 'updated_checkout', restoreFocus );
         $( document.body ).on( 'change', 'input.shipping_method', ensureEmbedded );
 
         if ( settings.buttonColor ) {

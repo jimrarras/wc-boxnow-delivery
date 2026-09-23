@@ -100,4 +100,26 @@ class BootstrapTest extends TestCase {
 
         $this->assertFalse( wc_boxnow_upstream_is_active() );
     }
+
+    public function test_release_version_is_the_same_everywhere_it_is_stated() {
+        // The plugin header is what WordPress shows; the constant versions
+        // the enqueued scripts, so a stale one serves cached JS after an update.
+        $root = dirname( __DIR__, 2 );
+        $main = file_get_contents( $root . '/wc-boxnow-delivery.php' );
+
+        $this->assertSame( 1, preg_match( '/^ \* Version: (\d+\.\d+\.\d+)$/m', $main, $m ) );
+        $version = $m[1];
+
+        $this->assertStringContainsString( "define( 'WC_BOXNOW_VERSION', '" . $version . "' )", $main );
+
+        $readme = str_replace( "\r\n", "\n", file_get_contents( $root . '/readme.txt' ) );
+        $this->assertStringContainsString( "\nStable tag: " . $version . "\n", $readme );
+        $this->assertSame( 1, preg_match( '/^= (\d+\.\d+\.\d+) =$/m', $readme, $m ) );
+        $this->assertSame( $version, $m[1], 'Newest readme.txt changelog entry.' );
+
+        $this->assertSame( 1, preg_match( '/^## \[(\d+\.\d+\.\d+)\]/m', file_get_contents( $root . '/CHANGELOG.md' ), $m ) );
+        $this->assertSame( $version, $m[1], 'Newest CHANGELOG.md section.' );
+
+        $this->assertStringContainsString( '"Project-Id-Version: wc-boxnow-delivery ' . $version . '\n"', file_get_contents( $root . '/languages/wc-boxnow-delivery-el.po' ) );
+    }
 }

@@ -16,6 +16,13 @@ class WC_BoxNow_Tracking {
     const CRON_HOOK    = 'wc_boxnow_tracking_cron';
     const TRACKER_BASE = 'https://t.boxnow.gr/?track=';
 
+    /**
+     * Order statuses a BOX NOW parcel event may move an order out of, before
+     * the wc_boxnow_tracked_order_statuses filter. One rule for the poller
+     * and the webhook.
+     */
+    const TRACKED_ORDER_STATUSES = array( 'processing', 'on-hold', 'completed' );
+
     /** @var WC_BoxNow_Tracking|null */
     private static $instance = null;
 
@@ -216,6 +223,45 @@ class WC_BoxNow_Tracking {
             }
         }
 
+        // The shipping line was changed to another carrier after the parcel
+        // was booked. BOX NOW's outcome is recorded, and the final marker
+        // stops the polling, but the order status now belongs to the carrier
+        // that ships the order: ACS, for one, only tracks processing, on-hold
+        // and completed orders, so a boxnow-* status would strand it. The
+        // poller and the webhook both come through here.
+        if ( WC_BoxNow_Locker::order_moved_off_boxnow( $order ) ) {
+            /**
+             * Let BOX NOW tracking settle an order that no longer has a BOX NOW
+             * shipping line.
+             *
+             * By default such an order keeps its status: an operator changed
+             * its shipping line, usually to ship it with another carrier. A
+             * store that swaps the line only to waive the shipping fee, while
+             * the parcel still goes by BOX NOW, can return true to get the
+             * boxnow-* status change back.
+             *
+             * @since 1.0.6
+             *
+             * @param bool     $settle       Default false.
+             * @param WC_Order $order        The order.
+             * @param string   $order_status Status the order would settle to:
+             *                               'boxnow-delivered', 'boxnow-returned'
+             *                               or 'boxnow-attention'.
+             */
+            if ( ! apply_filters( 'wc_boxnow_settle_order_without_boxnow_line', false, $order, $order_status ) ) {
+                $order->update_meta_data( '_boxnow_tracking_final', substr( $order_status, strlen( 'boxnow-' ) ) );
+                $order->add_order_note(
+                    sprintf(
+                        /* translators: %s: order status name, e.g. "Returned (BOX NOW)" */
+                        __( 'BOX NOW parcels on this order settled as %s. The order no longer ships with BOX NOW Delivery, so its status was left unchanged.', 'wc-boxnow-delivery' ),
+                        self::order_status_label( $order_status )
+                    )
+                );
+                $order->save();
+                return false;
+            }
+        }
+
         if ( 'boxnow-attention' === $order_status ) {
             $order->add_order_note(
                 __( 'BOX NOW could not complete this delivery on its own. The order needs manual attention.', 'wc-boxnow-delivery' )
@@ -265,6 +311,18 @@ class WC_BoxNow_Tracking {
     private static function parcel_status_map( $order ) {
         $map = $order->get_meta( '_boxnow_tracking_parcel_status' );
         return is_array( $map ) ? $map : array();
+    }
+
+    /**
+     * Readable name of one of our order statuses, for order notes.
+     *
+     * @param string $order_status Status without the wc- prefix.
+     * @return string
+     */
+    private static function order_status_label( $order_status ) {
+        $labels = function_exists( 'wc_boxnow_order_statuses' ) ? wc_boxnow_order_statuses() : array();
+
+        return isset( $labels[ 'wc-' . $order_status ] ) ? (string) $labels[ 'wc-' . $order_status ] : (string) $order_status;
     }
 
     /**
@@ -409,6 +467,80 @@ class WC_BoxNow_Tracking {
     }
 
     /**
+     * Order statuses a BOX NOW parcel event may move an order out of.
+     *
+     * Shared by the poller's query and the webhook, so both follow one rule.
+     * An order another carrier or the merchant already settled (acs-*,
+     * geniki-*, cancelled, refunded and so on) is outside it.
+     *
+     * @return string[] Statuses without the wc- prefix.
+     */
+    public static function tracked_order_statuses() {
+        /**
+         * Filter the order statuses BOX NOW tracking may transition out of.
+         *
+         * Used by both the cron poller and the inbound webhook. Add a custom
+         * status here when orders wait in it while their BOX NOW parcel is on
+         * its way (for example the status automatic vouchers are created at).
+         *
+         * @since 1.0.6
+         *
+         * @param string[] $statuses Statuses without the wc- prefix. Default
+         *                           'processing', 'on-hold' and 'completed'.
+         */
+        return (array) apply_filters( 'wc_boxnow_tracked_order_statuses', self::TRACKED_ORDER_STATUSES );
+    }
+
+    /**
+     * Is the order in a status BOX NOW tracking may transition out of?
+     *
+     * Only the status is checked here. Whether the order still ships with
+     * BOX NOW is decided in apply_status(), for the poller and the webhook
+     * alike (see WC_BoxNow_Locker::order_moved_off_boxnow()).
+     *
+     * @param WC_Order $order Order.
+     * @return bool
+     */
+    public static function order_status_is_tracked( $order ) {
+        return in_array( (string) $order->get_status(), self::tracked_order_statuses(), true );
+    }
+
+    /**
+     * Record a parcel event on an order whose status must not change.
+     *
+     * The parcel's status is stored as apply_status() would store it, and a
+     * note is added once per status change, but set_status() is never called
+     * and no final marker is written: if the order later returns to a
+     * tracked status, the poller can still settle it.
+     *
+     * @param WC_Order $order         Order.
+     * @param string   $parcel_status BOX NOW parcel status.
+     * @param string   $parcel_id     Parcel id.
+     */
+    private static function record_untracked_event( $order, $parcel_status, $parcel_id ) {
+        $statuses = self::parcel_status_map( $order );
+        $previous = isset( $statuses[ (string) $parcel_id ] ) ? (string) $statuses[ (string) $parcel_id ] : null;
+
+        $statuses[ (string) $parcel_id ] = (string) $parcel_status;
+        $order->update_meta_data( '_boxnow_tracking_parcel_status', $statuses );
+        $order->update_meta_data( '_boxnow_tracking_status', (string) $parcel_status );
+        $order->update_meta_data( '_boxnow_tracking_checked', time() );
+
+        if ( (string) $parcel_status !== $previous ) {
+            $order->add_order_note(
+                sprintf(
+                    /* translators: 1: parcel id, 2: BOX NOW parcel status */
+                    __( 'BOX NOW reports parcel %1$s status: %2$s. The order status was left unchanged because the order is not an open BOX NOW shipment.', 'wc-boxnow-delivery' ),
+                    $parcel_id,
+                    $parcel_status
+                )
+            );
+        }
+
+        $order->save();
+    }
+
+    /**
      * Orders that still have an unsettled BOX NOW parcel.
      *
      * @return array WC_Order objects.
@@ -425,7 +557,7 @@ class WC_BoxNow_Tracking {
             // are polled less and less and eventually never again.
             'orderby'    => 'date',
             'order'      => 'ASC',
-            'status'     => array( 'processing', 'on-hold', 'completed' ),
+            'status'     => self::tracked_order_statuses(),
             'meta_query' => array(
                 array(
                     'key'     => '_boxnow_parcel_ids',
@@ -655,7 +787,13 @@ class WC_BoxNow_Tracking {
      * Always answers 200 for a well-formed request, even when the parcel is
      * unknown to this store: BOX NOW retries with exponential backoff for 24
      * hours, and a store that shares the partner account will legitimately see
-     * events for parcels it does not own.
+     * events for parcels it does not own. An event for an order outside
+     * tracked_order_statuses() that BOX NOW has not settled (no
+     * _boxnow_tracking_final) is recorded but not applied, and the answer
+     * carries 'applied' => false. An order BOX NOW already settled goes
+     * through apply_status(), which stores the parcel status without a note
+     * or a status change, and the answer is {"ok":true}, whatever the
+     * order's status.
      *
      * @param WP_REST_Request $request Request.
      * @return WP_REST_Response
@@ -698,6 +836,17 @@ class WC_BoxNow_Tracking {
             return new WP_REST_Response( array( 'ignored' => true ), 200 );
         }
 
+        // The candidate query has no status condition, so it also returns
+        // orders the poller never sees: ones another carrier settled
+        // (acs-delivered, geniki-returned) or the merchant cancelled or
+        // refunded. Those only get the event on record. An order BOX NOW
+        // already settled goes through apply_status(), which leaves it alone
+        // without a note, exactly as before.
+        if ( '' === (string) $order->get_meta( '_boxnow_tracking_final' ) && ! self::order_status_is_tracked( $order ) ) {
+            self::record_untracked_event( $order, $parsed['status'], $parsed['parcel_id'] );
+            return new WP_REST_Response( array( 'ok' => true, 'applied' => false ), 200 );
+        }
+
         self::apply_status( $order, $parsed['status'], $parsed['parcel_id'] );
 
         return new WP_REST_Response( array( 'ok' => true ), 200 );
@@ -723,6 +872,12 @@ class WC_BoxNow_Tracking {
         $parcel_ids = WC_BoxNow_Voucher::get_parcel_ids( $order );
 
         if ( empty( $parcel_ids ) ) {
+            return;
+        }
+
+        // Moved to another carrier: that carrier's tracking is the one the
+        // customer needs, not a link to a parcel that will not travel.
+        if ( WC_BoxNow_Locker::order_moved_off_boxnow( $order ) ) {
             return;
         }
 
