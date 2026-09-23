@@ -1,0 +1,8 @@
+# Keep every text file LF in working copies too, whatever core.autocrlf says: the unit tests match
+# source text with \n, and release zips are built from the working copy.
+* text=auto eol=lf
+*.mo binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary
