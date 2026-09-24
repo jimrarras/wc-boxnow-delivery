@@ -3,6 +3,20 @@
 All notable changes to BOX NOW Delivery for WooCommerce are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.8] - 2026-09-24
+
+### Fixed
+
+- With "Disable Cash On Delivery For BOX NOW" on, choosing cash on delivery at
+  checkout now withdraws the BOX NOW rate (`woocommerce_package_rates`), the
+  way ACS Point's exclusive mode does. Before, only the other direction was
+  enforced: choosing BOX NOW removed cash on delivery, but a customer who had
+  already picked cash on delivery was still offered BOX NOW. Packages carry a
+  `boxnow_cod` tag (`woocommerce_cart_shipping_packages`) so WooCommerce's rate
+  cache re-evaluates when the payment method changes. When BOX NOW is the only
+  rate offered it is kept, and the gateway filter removes cash on delivery
+  instead, so checkout is never left without shipping
+
 ## [1.0.7] - 2026-09-23
 
 ### Changed

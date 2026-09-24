@@ -7,7 +7,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 11.1
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -113,6 +113,9 @@ for, stays live. Use BOX NOW 1.0.6 with Geniki Taxydromiki 1.0.1 or later.
   whenever the payment method changes.
 
 == Changelog ==
+
+= 1.0.8 =
+* Fix: with "Disable Cash On Delivery For BOX NOW" on, choosing cash on delivery at checkout now withdraws the BOX NOW rate, as ACS Point's exclusive mode does. Before, only the other direction worked (choosing BOX NOW removed cash on delivery), so a customer paying cash on delivery was still offered BOX NOW. When BOX NOW is the only rate offered it stays and cash on delivery is removed instead
 
 = 1.0.7 =
 * Tweak: complete Greek translation. Settings, the BOX NOW order box, order notes, admin notices, order statuses, the bulk action and the tracking email are now in Greek on a Greek site; before, only the locker picker and the checkout messages were

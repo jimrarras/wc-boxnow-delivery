@@ -3,7 +3,7 @@
 # admin notices. Rebuild the template with php bin/make-pot.php and the .mo with php bin/make-mo.php.
 msgid ""
 msgstr ""
-"Project-Id-Version: wc-boxnow-delivery 1.0.7\n"
+"Project-Id-Version: wc-boxnow-delivery 1.0.8\n"
 "Language: el\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"

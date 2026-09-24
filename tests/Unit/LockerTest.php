@@ -844,6 +844,98 @@ class LockerTest extends TestCase {
         );
     }
 
+    // ── The other direction: cash on delivery chosen withholds the rate ──
+
+    private function rateFor( $method_id ) {
+        $rate = \Mockery::mock( 'WC_Shipping_Rate' );
+        $rate->shouldReceive( 'get_method_id' )->andReturn( $method_id );
+        return $rate;
+    }
+
+    private function offeredRates() {
+        return array(
+            'flat_rate:2'        => $this->rateFor( 'flat_rate' ),
+            'geniki_courier:5'   => $this->rateFor( 'geniki_courier' ),
+            'box_now_delivery:6' => $this->rateFor( 'box_now_delivery' ),
+        );
+    }
+
+    public function test_boxnow_rate_is_withheld_while_cod_is_the_chosen_payment_when_the_option_is_on() {
+        // Owner report (2026-09-24): with Αντικαταβολή selected the BOX NOW
+        // rate was still listed, while ACS Point correctly disappeared.
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $rates = \WC_BoxNow_Locker::filter_package_rates( $this->offeredRates(), array( 'boxnow_cod' => 1 ) );
+
+        $this->assertArrayNotHasKey( 'box_now_delivery:6', $rates );
+        $this->assertArrayHasKey( 'flat_rate:2', $rates );
+        $this->assertArrayHasKey( 'geniki_courier:5', $rates );
+    }
+
+    public function test_boxnow_rate_is_withheld_from_the_session_when_the_package_is_untagged() {
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $rates = \WC_BoxNow_Locker::filter_package_rates( $this->offeredRates(), array() );
+
+        $this->assertArrayNotHasKey( 'box_now_delivery:6', $rates );
+    }
+
+    public function test_boxnow_rate_is_kept_for_another_payment_method() {
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_payment_method' => 'piraeusbank_gateway' ) );
+
+        $rates = \WC_BoxNow_Locker::filter_package_rates( $this->offeredRates(), array( 'boxnow_cod' => 0 ) );
+
+        $this->assertArrayHasKey( 'box_now_delivery:6', $rates );
+    }
+
+    public function test_boxnow_rate_is_kept_with_cod_when_the_option_is_off() {
+        // Lockers take card on collection, so BOX NOW with cash on delivery
+        // is a valid combination unless the store switches it off.
+        $this->stubGetOption( array() );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $rates = \WC_BoxNow_Locker::filter_package_rates( $this->offeredRates(), array( 'boxnow_cod' => 1 ) );
+
+        $this->assertArrayHasKey( 'box_now_delivery:6', $rates );
+    }
+
+    public function test_boxnow_rate_is_kept_when_it_is_the_only_rate_offered() {
+        // Withholding it would leave no shipping at all; with BOX NOW chosen,
+        // filter_payment_gateways() then removes cash on delivery instead.
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $rates = \WC_BoxNow_Locker::filter_package_rates(
+            array( 'box_now_delivery:6' => $this->rateFor( 'box_now_delivery' ) ),
+            array( 'boxnow_cod' => 1 )
+        );
+
+        $this->assertArrayHasKey( 'box_now_delivery:6', $rates );
+    }
+
+    public function test_packages_are_tagged_with_the_cod_choice_so_the_rate_cache_re_evaluates() {
+        // WooCommerce caches rates per package hash; without a payment tag a
+        // switch to cash on delivery would be served the cached rate list.
+        $this->stubGetOption( array( 'wc_boxnow_disable_cod' => 'yes' ) );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $packages = \WC_BoxNow_Locker::tag_packages_with_payment( array( array( 'contents' => array() ) ) );
+
+        $this->assertSame( 1, $packages[0]['boxnow_cod'] );
+    }
+
+    public function test_packages_are_left_untouched_when_the_option_is_off() {
+        $this->stubGetOption( array() );
+        $this->stubSession( array( 'chosen_payment_method' => 'cod' ) );
+
+        $packages = \WC_BoxNow_Locker::tag_packages_with_payment( array( array( 'contents' => array() ) ) );
+
+        $this->assertArrayNotHasKey( 'boxnow_cod', $packages[0] );
+    }
+
     // ── Pay-for-order page: the order being paid decides, not the cart ───
 
     private function stubOrderPay( $order ) {

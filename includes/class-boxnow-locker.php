@@ -61,6 +61,11 @@ class WC_BoxNow_Locker {
         add_action( 'woocommerce_checkout_create_order', array( $this, 'save_classic_checkout' ), 10, 2 );
         add_filter( 'woocommerce_available_payment_gateways', array( __CLASS__, 'filter_payment_gateways' ) );
 
+        // The other direction: cash on delivery chosen withholds the BOX NOW
+        // rate. See filter_package_rates().
+        add_filter( 'woocommerce_cart_shipping_packages', array( __CLASS__, 'tag_packages_with_payment' ) );
+        add_filter( 'woocommerce_package_rates', array( __CLASS__, 'filter_package_rates' ), 20, 2 );
+
         // After WooCommerce's own choice (priority 10), and only for changes
         // that involve a BOX NOW rate. See keep_chosen_rate().
         add_filter( 'woocommerce_shipping_chosen_method', array( __CLASS__, 'keep_chosen_rate' ), 20, 3 );
@@ -392,6 +397,81 @@ class WC_BoxNow_Locker {
         }
 
         return $gateways;
+    }
+
+    /**
+     * Is cash on delivery the payment method chosen in the cart session?
+     *
+     * @return bool
+     */
+    private static function session_pays_cod() {
+        if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+            return false;
+        }
+        return 'cod' === (string) WC()->session->get( 'chosen_payment_method', '' );
+    }
+
+    /**
+     * Put the cash-on-delivery choice into each shipping package.
+     *
+     * WooCommerce caches the rates of a package under a hash of the package,
+     * so without this a switch to cash on delivery would be served the cached
+     * list and filter_package_rates() would never run again. The checkout
+     * posts the payment method through update_order_review, which stores it
+     * in the session before the packages are built.
+     *
+     * @param array $packages Shipping packages.
+     * @return array
+     */
+    public static function tag_packages_with_payment( $packages ) {
+        if ( ! self::cod_disabled() || ! is_array( $packages ) ) {
+            return $packages;
+        }
+        $cod = self::session_pays_cod() ? 1 : 0;
+        foreach ( $packages as $key => $package ) {
+            if ( is_array( $package ) ) {
+                $packages[ $key ]['boxnow_cod'] = $cod;
+            }
+        }
+        return $packages;
+    }
+
+    /**
+     * Withhold the BOX NOW rate while cash on delivery is the chosen payment.
+     *
+     * filter_payment_gateways() covers one direction (BOX NOW chosen, so no
+     * cash on delivery); this covers the other, so a customer who picked
+     * cash on delivery is not offered a rate that cannot take it. Mirrors
+     * ACS Point's "exclusive" mode. When BOX NOW is the only rate offered it
+     * stays: withholding it would leave no shipping at all, and once it is
+     * chosen the gateway filter removes cash on delivery instead.
+     *
+     * @param array $rates   Rate id => WC_Shipping_Rate.
+     * @param array $package Package.
+     * @return array
+     */
+    public static function filter_package_rates( $rates, $package = array() ) {
+        if ( ! self::cod_disabled() || ! is_array( $rates ) ) {
+            return $rates;
+        }
+
+        $cod = ( is_array( $package ) && isset( $package['boxnow_cod'] ) )
+            ? ! empty( $package['boxnow_cod'] )
+            : self::session_pays_cod();
+
+        if ( ! $cod ) {
+            return $rates;
+        }
+
+        $kept = $rates;
+        foreach ( $kept as $rate_id => $rate ) {
+            if ( is_object( $rate ) && is_callable( array( $rate, 'get_method_id' ) )
+                && self::SHIPPING_METHOD_ID === $rate->get_method_id() ) {
+                unset( $kept[ $rate_id ] );
+            }
+        }
+
+        return empty( $kept ) ? $rates : $kept;
     }
 
     /**
